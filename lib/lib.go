@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"fmt"
@@ -81,16 +81,16 @@ type FinalPackage struct {
 	RouteInfo []RouteInfo
 }
 type FinalCreator struct {
-	routes     Routes
-	stops      Stops
-	buses      Vehicles
+	Routes     Routes
+	Stops      Stops
+	Buses      Vehicles
 }
 type Client struct {
-	url string
+	Url string
 }
 
 type Caller interface {
-	CallToTheJerks(url string) []byte
+	CallToTheJerks() []byte
 }
 type Creator interface {
 	CreateFinalJson() (*[]byte, error)
@@ -120,9 +120,46 @@ func (mtns Minutestonextstops) SetMinutesToNextStop(StopID int, Minutes int){
 	mtns.StopID = StopID
 	mtns.Minutes = Minutes
 }
-func (c Client) CallToTheJerks() ([]byte,error){
+func CreateFinalCreator() (FinalCreator) {
+	routes :=  Routes{}
+	stops :=   Stops{}
+	buses :=   Vehicles{}
 
-	req, err := http.NewRequest("GET",c.url,nil)
+	client := Client{Url:ROUTES_URL}
+	routesBody,err := client.CallToTheJerks()
+	if err != nil {
+		fmt.Println("Here is the error: ", err)
+	}
+	client2 := Client{Url:BUSES_URL}
+	busesBody,err1 := client2.CallToTheJerks()
+	if err1 != nil {
+		fmt.Println("Here is the error: ", err1)
+	}
+	client3 := Client{Url:STOPS_URL}
+	stopsBody,err2 := client3.CallToTheJerks()
+	if err2 != nil {
+		fmt.Println("Here is the error: ", err2)
+	}
+	
+    error := json.Unmarshal(routesBody, &routes)
+    if error != nil {
+    	fmt.Println("hi: ",error)
+    }
+    stoperror := json.Unmarshal(stopsBody, &stops)
+    if stoperror != nil {
+    	fmt.Println("hi2 ",stoperror)
+    }
+    buserror := json.Unmarshal(busesBody, &buses)
+    if buserror != nil {
+    	//fmt.Println("hi3: ",buserror)
+    }
+
+	return FinalCreator{Routes:routes,Stops:stops,Buses:buses}
+
+}
+func (c Client) CallToTheJerks() ([]byte,error){
+	fmt.Println("Making call to: ",c.Url)
+	req, err := http.NewRequest("GET",c.Url,nil)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +198,7 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte,error) {
 	stopInfo := StopInfo{}
 	routeInfo := RouteInfo{}
 
-	for _, route := range fc.routes.GetRoutes {
+	for _, route := range fc.Routes.GetRoutes {
 		if route.ID == 1 || route.ID == 6 || route.ID == 7 {
 			routeInfo.SetRouteInfo(route.ID,route.Name,route.Stops)
 			routeCollection = append(routeCollection,routeInfo)		
@@ -174,7 +211,7 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte,error) {
 			}
 		}
 	}
-	for _, stop := range fc.stops.GetStops {	
+	for _, stop := range fc.Stops.GetStops {	
 		for _, usedStop := range stops {
 			if usedStop == stop.ID {
 				stopInfo.SetStopInfo(stop.ID,stop.Name,stop.Lat,stop.Lng)
@@ -183,7 +220,7 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte,error) {
 		}
 		
 	}
-	for _, bus := range fc.buses.GetVehicles{
+	for _, bus := range fc.Buses.GetVehicles{
 		busInfo.SetBusInfo(bus.Routeid,bus.Equipmentid,bus.Lat,bus.Lng,bus.Nextstopid,bus.Inservice,bus.Minutestonextstops)
 		busCollection = append(busCollection,busInfo)
 	}
@@ -196,81 +233,4 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte,error) {
 		return nil, err
 	}
 	return &json, nil
-}
-
-func main() {
-
-
-	routes := Routes{}
-	stops := Stops{}
-	buses := Vehicles{}
-
-    error := json.Unmarshal(test_routes, &routes)
-    if error != nil {
-    	fmt.Println("hi: ",error)
-    }
-
-    error2 := json.Unmarshal(test_stops, &stops)
-    if error2 != nil {
-    	panic(error2)
-    }
-     error3 := json.Unmarshal(test_buses, &buses)
-    if error2 != nil {
-    	fmt.Println("hi: ",error3)
-    }
-
-    FinalCreator := FinalCreator{routes:routes,stops:stops,buses:buses}
-
-    json,err := FinalCreator.CreateFinalJson()
-    if err != nil {
-    	panic(err)
-    }
-    fmt.Println("Here is the final json: ",string(*json))
-
-
-	// t1 := time.Now()
-	// client := Client{url:ROUTES_URL}
-	// routesBody,err := client.CallToTheJerks()
-	// if err != nil {
-	// 	fmt.Println("Here is the error: ", err)
-	// }
-	// client2 := Client{url:BUSES_URL}
-	// busesBody,err1 := client2.CallToTheJerks()
-	// if err1 != nil {
-	// 	fmt.Println("Here is the error: ", err1)
-	// }
-	// client3 := Client{url:STOPS_URL}
-	// stopsBody,err2 := client3.CallToTheJerks()
-	// if err2 != nil {
-	// 	fmt.Println("Here is the error: ", err2)
-	// }
-	// t2 := time.Now()
-
-	// fmt.Println(t2.Sub(t1))
-
-	
-	// route := Routes{}
- //    error := json.Unmarshal(routesBody, &route)
- //    if error != nil {
- //    	fmt.Println("hi: ",error)
- //    }
- //    stop := Stops{}
- //    stoperror := json.Unmarshal(stopsBody, &stop)
- //    if stoperror != nil {
- //    	fmt.Println("hi2 ",stoperror)
- //    }
- //    bus := Vehicles{}
- //    buserror := json.Unmarshal(busesBody, &bus)
- //    if buserror != nil {
- //    	fmt.Println("hi3: ",buserror)
- //    }
-
- //    for _, route := range route.GetRoutes {
- //    	if route.ID == 1 {
- //    		fmt.Println("This is the one where the id is 1: ",route.Name)
- //    	}
- //    }
- //    fmt.Println(stop)
- //    fmt.Println(bus)
-
 }
