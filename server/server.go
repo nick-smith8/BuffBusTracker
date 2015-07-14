@@ -29,14 +29,14 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func SetJson() {
 	for {
-		<-time.After(10 * time.Second)
+		
 		FinalCreator := lib.CreateFinalCreator()
 	    FinalJson,err := FinalCreator.CreateFinalJson()
 	    if err != nil {
 	    	panic(err)
 	    }
-	    log.Println(*FinalJson)
 	    JsonToSend = *FinalJson
+	    <-time.After(10000000 * time.Second)
 	}
 }
 
