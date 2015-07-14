@@ -38,7 +38,7 @@ func SetJson() {
 			panic(err)
 		}
 		JsonToSend = *FinalJson
-		<-time.After(10000000 * time.Second)
+		<-time.After(10 * time.Second)
 	}
 }
 
