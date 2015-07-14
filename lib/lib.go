@@ -193,6 +193,7 @@ func (c Client) CallToTheJerks() ([]byte, error) {
 func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
 
 	var service bool
+	var nextstopid interface{}
 
 	routeCollection := []RouteInfo{}
 	stopCollection := []StopInfo{}
@@ -229,7 +230,12 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
 		} else {
 			service = true
 		}
-		busInfo.SetBusInfo(bus.Routeid, bus.Equipmentid, bus.Lat, bus.Lng, bus.Nextstopid, service)
+		if bus.Nextstopid == nil {
+			nextstopid = -200
+		} else {
+			nextstopid = bus.Nextstopid
+		}
+		busInfo.SetBusInfo(bus.Routeid, bus.Equipmentid, bus.Lat, bus.Lng, nextstopid, service)
 		busCollection = append(busCollection, busInfo)
 	}
 
