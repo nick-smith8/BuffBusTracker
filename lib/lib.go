@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sort"
 	//"time"
 	//"sync"
 )
@@ -112,9 +113,10 @@ func (ri *RouteInfo) SetRouteInfo(Id int, Name string, Stops []string) {
 	ri.Name = Name
 	ri.Stops = Stops
 }
-func (si *StopInfo) SetStopInfo(Id int, Name string, Lat float64, Lng float64) {
+func (si *StopInfo) SetStopInfo(Id int, Name string, Nextbustimes []int, Lat float64, Lng float64) {
 	si.ID = Id
 	si.Name = Name
+	si.Nextbustimes = Nextbustimes
 	si.Lat = Lat
 	si.Lng = Lng
 }
@@ -191,6 +193,8 @@ func (c Client) CallToTheJerks() ([]byte, error) {
 func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
 
 	var service bool
+	var nextstopid interface{}
+
 	routeCollection := []RouteInfo{}
 	stopCollection := []StopInfo{}
 	busCollection := []BusInfo{}
@@ -198,13 +202,25 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
 	busInfo := BusInfo{}
 	stopInfo := StopInfo{}
 	routeInfo := RouteInfo{}
-
 	for _, route := range fc.Routes.GetRoutes {
 		routeInfo.SetRouteInfo(route.ID, route.Name, route.Stops)
 		routeCollection = append(routeCollection, routeInfo)
 	}
+	//NEED to optomize this....  :(
 	for _, stop := range fc.Stops.GetStops {
-		stopInfo.SetStopInfo(stop.ID, stop.Name, stop.Lat, stop.Lng)
+		var nextbustimes []int
+		for _, bus := range fc.Buses.GetVehicles {
+			if len(bus.Minutestonextstops) != 0 {
+				for _, minute := range bus.Minutestonextstops {
+					if minute.StopID == stop.ID && minute.Minutes > 0 {
+						nextbustimes = append(nextbustimes, minute.Minutes)
+					}
+				}
+			}
+		}
+
+		sort.Ints(nextbustimes)
+		stopInfo.SetStopInfo(stop.ID, stop.Name, nextbustimes, stop.Lat, stop.Lng)
 		stopCollection = append(stopCollection, stopInfo)
 
 	}
@@ -214,7 +230,12 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
 		} else {
 			service = true
 		}
-		busInfo.SetBusInfo(bus.Routeid, bus.Equipmentid, bus.Lat, bus.Lng, bus.Nextstopid, service)
+		if bus.Nextstopid == nil {
+			nextstopid = -200
+		} else {
+			nextstopid = bus.Nextstopid
+		}
+		busInfo.SetBusInfo(bus.Routeid, bus.Equipmentid, bus.Lat, bus.Lng, nextstopid, service)
 		busCollection = append(busCollection, busInfo)
 	}
 
