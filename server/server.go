@@ -22,15 +22,15 @@ var (
 	RouteJsonToSend []byte
 )
 
-type myHandler struct {
-	Json []byte
-}
+// type myHandler struct {
+// 	Json []byte
+// }
 
-func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(JsonToSend)
-}
+// func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(200)
+// 	w.Write(JsonToSend)
+// }
 
 func SetJson() {
 	for {
@@ -50,30 +50,30 @@ func SetJson() {
 func main() {
 	go SetJson()
 
-	s := &http.Server{
-		Addr:           ":8080",
-		Handler:        &myHandler{},
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-	http.HandleFunc("/businfo", func(w http.ResponseWriter, r *http.Request) {
+	// s := &http.Server{
+	// 	Addr:           ":8080",
+	// 	Handler:        &myHandler{},
+	// 	ReadTimeout:    10 * time.Second,
+	// 	WriteTimeout:   10 * time.Second,
+	// 	MaxHeaderBytes: 1 << 20,
+	// }
+	http.HandleFunc("/buses", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(BusJsonToSend)
 	})
-	http.HandleFunc("/stopinfo", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/stops", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(StopJsonToSend)
 	})
-	http.HandleFunc("/routeinfo", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/routes", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(RouteJsonToSend)
 	})
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
-	//go log.Fatal(r.ListenAndServe())
-	log.Fatal(s.ListenAndServe())
+	// //go log.Fatal(r.ListenAndServe())
+	// log.Fatal(s.ListenAndServe())
 }
