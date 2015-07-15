@@ -190,7 +190,7 @@ func (c Client) CallToTheJerks() ([]byte, error) {
 	return body, nil
 }
 
-func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
+func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 
 	var service bool
 	var nextstopid interface{}
@@ -239,12 +239,21 @@ func (fc FinalCreator) CreateFinalJson() (*[]byte, error) {
 		busCollection = append(busCollection, busInfo)
 	}
 
-	FinalPackage := FinalPackage{busCollection, stopCollection, routeCollection}
-
-	json, err := json.Marshal(FinalPackage)
+	busJson, err := json.Marshal(busCollection)
 	if err != nil {
 		fmt.Println("Error Marshalling the JSON for the Audit", err)
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return &json, nil
+	stopJson, err := json.Marshal(stopCollection)
+	if err != nil {
+		fmt.Println("Error Marshalling the JSON for the Audit", err)
+		return nil, nil, nil, err
+	}
+	routeJson, err := json.Marshal(routeCollection)
+	if err != nil {
+		fmt.Println("Error Marshalling the JSON for the Audit", err)
+		return nil, nil, nil, err
+	}
+
+	return busJson, stopJson, routeJson, nil
 }
