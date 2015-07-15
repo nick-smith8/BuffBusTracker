@@ -16,7 +16,10 @@ const (
 )
 
 var (
-	JsonToSend []byte
+	JsonToSend      []byte
+	BusJsonToSend   []byte
+	StopJsonToSend  []byte
+	RouteJsonToSend []byte
 )
 
 type myHandler struct {
@@ -31,13 +34,15 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func SetJson() {
 	for {
-
 		FinalCreator := lib.CreateFinalCreator()
-		FinalJson, err := FinalCreator.CreateFinalJson()
+		BusJson, StopJson, RouteJson, err := FinalCreator.CreateFinalJson()
 		if err != nil {
 			panic(err)
 		}
-		JsonToSend = *FinalJson
+		BusJsonToSend = BusJson
+		StopJsonToSend = StopJson
+		RouteJsonToSend = RouteJson
+
 		<-time.After(1000000 * time.Second)
 	}
 }
@@ -52,6 +57,23 @@ func main() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+	http.HandleFunc("/businfo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(BusJsonToSend)
+	})
+	http.HandleFunc("/stopinfo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(StopJsonToSend)
+	})
+	http.HandleFunc("/routeinfo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(RouteJsonToSend)
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
 
+	//go log.Fatal(r.ListenAndServe())
 	log.Fatal(s.ListenAndServe())
 }
