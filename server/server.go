@@ -24,6 +24,7 @@ var (
 
 type myHandler struct{}
 
+// Define the different functions to handle the routes
 func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
@@ -40,6 +41,8 @@ func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(RouteJsonToSend)
 }
 
+// Sets the global variables to the json that will be sent
+// Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
 	for {
 		FinalCreator := lib.CreateFinalCreator()
@@ -54,37 +57,17 @@ func SetJson() {
 		<-time.After(1000000 * time.Second)
 	}
 }
-func init() {
 
+func init() {
 	http.HandleFunc("/buses", bushandler)
 	http.HandleFunc("/stops", stophandler)
 	http.HandleFunc("/routes", routehandler)
 }
+
 func main() {
+	// Create a go routine for this so it will run concurrently with the server
 	go SetJson()
 
-	// s := &http.Server{
-	// 	Addr:           ":8080",
-	// 	Handler:        &myHandler{},
-	// 	ReadTimeout:    10 * time.Second,
-	// 	WriteTimeout:   10 * time.Second,
-	// 	MaxHeaderBytes: 1 << 20,
-	// }
-	// http.HandleFunc("/buses", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Header().Set("Content-Type", "application/json")
-	// 	w.WriteHeader(200)
-	// 	w.Write(BusJsonToSend)
-	// })
-	// http.HandleFunc("/stops", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Header().Set("Content-Type", "application/json")
-	// 	w.WriteHeader(200)
-	// 	w.Write(StopJsonToSend)
-	// })
-	// http.Handle("/routes",
-	// })
-
+	// Listen on port 8080 and fail if anything bad happens
 	go log.Fatal(http.ListenAndServe(":8080", nil))
-
-	// //go log.Fatal(r.ListenAndServe())
-	// log.Fatal(s.ListenAndServe())
 }
