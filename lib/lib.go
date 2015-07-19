@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
 	//"time"
 	//"sync"
 )
@@ -76,9 +77,9 @@ type StopInfo struct {
 	Lng          float64 `json:"lng"`
 }
 type RouteInfo struct {
-	ID    int      `json:"id"`
-	Name  string   `json:"name"`
-	Stops []string `json:"stops"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Stops []int  `json:"stops"`
 }
 type FinalPackage struct {
 	BusInfo   []BusInfo
@@ -112,7 +113,7 @@ func (bi *BusInfo) SetBusInfo(Routeid int, Equipmentid string, Lat float64, Lng 
 	bi.Inservice = Inservice
 	//bi.Minutestonextstops = Minutestonextstops
 }
-func (ri *RouteInfo) SetRouteInfo(Id int, Name string, Stops []string) {
+func (ri *RouteInfo) SetRouteInfo(Id int, Name string, Stops []int) {
 	ri.ID = Id
 	ri.Name = Name
 	ri.Stops = Stops
@@ -211,7 +212,15 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 	stopInfo := StopInfo{}
 	routeInfo := RouteInfo{}
 	for _, route := range fc.Routes.GetRoutes {
-		routeInfo.SetRouteInfo(route.ID, route.Name, route.Stops)
+		var stopToInt []int
+		for _, stop := range route.Stops {
+			stopAsInt, err := strconv.Atoi(stop)
+			if err != nil {
+				log.Fatal(err)
+			}
+			stopToInt = append(stopToInt, stopAsInt)
+		}
+		routeInfo.SetRouteInfo(route.ID, route.Name, stopToInt)
 		routeCollection = append(routeCollection, routeInfo)
 	}
 	//NEED to optomize this....  :(
