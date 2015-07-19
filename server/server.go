@@ -16,42 +16,58 @@ const (
 )
 
 var (
-	JsonToSend []byte
+	JsonToSend      []byte
+	BusJsonToSend   []byte
+	StopJsonToSend  []byte
+	RouteJsonToSend []byte
 )
 
-type myHandler struct {
-	Json []byte
-}
+type myHandler struct{}
 
-func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// Define the different functions to handle the routes
+func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(JsonToSend)
+	w.Write(BusJsonToSend)
+}
+func stophandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(StopJsonToSend)
+}
+func routehandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(RouteJsonToSend)
 }
 
+// Sets the global variables to the json that will be sent
+// Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
 	for {
-
 		FinalCreator := lib.CreateFinalCreator()
-		FinalJson, err := FinalCreator.CreateFinalJson()
+		BusJson, StopJson, RouteJson, err := FinalCreator.CreateFinalJson()
 		if err != nil {
 			panic(err)
 		}
-		JsonToSend = *FinalJson
+		BusJsonToSend = BusJson
+		StopJsonToSend = StopJson
+		RouteJsonToSend = RouteJson
+
 		<-time.After(1000000 * time.Second)
 	}
 }
 
+func init() {
+	http.HandleFunc("/buses", bushandler)
+	http.HandleFunc("/stops", stophandler)
+	http.HandleFunc("/routes", routehandler)
+}
+
 func main() {
+	// Create a go routine for this so it will run concurrently with the server
 	go SetJson()
 
-	s := &http.Server{
-		Addr:           ":8080",
-		Handler:        &myHandler{},
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-
-	log.Fatal(s.ListenAndServe())
+	// Listen on port 8080 and fail if anything bad happens
+	go log.Fatal(http.ListenAndServe(":8080", nil))
 }
