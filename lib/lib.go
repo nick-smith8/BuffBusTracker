@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	//"time"
 	//"sync"
 )
@@ -237,6 +238,11 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 		}
 
 		sort.Ints(nextbustimes)
+
+		if strings.EqualFold(stop.Name, "Euclid") {
+			stop.Name = "UMC"
+		}
+
 		stopInfo.SetStopInfo(stop.ID, stop.Name, nextbustimes, stop.Lat, stop.Lng)
 		stopCollection = append(stopCollection, stopInfo)
 
