@@ -242,7 +242,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 		if strings.EqualFold(stop.Name, "Euclid") {
 			stop.Name = "UMC"
 		}
-		if !strings.EqualFold(stop.Name, "30th and Colorado E Bound") || !strings.EqualFold(stop.Name, "30th and Colorado E Bound") {
+		if !strings.EqualFold(stop.Name, "30th and Colorado E Bound") || !strings.EqualFold(stop.Name, "30th and Colorado WB") {
 			stopInfo.SetStopInfo(stop.ID, stop.Name, nextbustimes, stop.Lat, stop.Lng)
 			stopCollection = append(stopCollection, stopInfo)
 
