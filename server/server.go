@@ -54,7 +54,7 @@ func SetJson() {
 		StopJsonToSend = StopJson
 		RouteJsonToSend = RouteJson
 
-		<-time.After(1000000 * time.Second)
+		<-time.After(20 * time.Second)
 	}
 }
 
