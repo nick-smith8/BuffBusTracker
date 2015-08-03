@@ -171,7 +171,7 @@ func CreateFinalCreator() FinalCreator {
 
 // Makes the call to the ETA jerks and returns the byte slice of json
 func (c Client) CallToTheJerks() ([]byte, error) {
-	fmt.Println("Making call to: ", c.Url)
+	log.Println("Making call to: ", c.Url)
 	req, err := http.NewRequest("GET", c.Url, nil)
 	if err != nil {
 		return nil, err
