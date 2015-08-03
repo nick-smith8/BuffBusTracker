@@ -140,26 +140,26 @@ func CreateFinalCreator() FinalCreator {
 	client := Client{Url: ROUTES_URL}
 	routesBody, err := client.CallToTheJerks()
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
 	}
 	client2 := Client{Url: BUSES_URL}
 	busesBody, err1 := client2.CallToTheJerks()
 	if err1 != nil {
-		log.Fatal(err1)
+		// log.Fatal(err1)
 	}
 	client3 := Client{Url: STOPS_URL}
 	stopsBody, err2 := client3.CallToTheJerks()
 	if err2 != nil {
-		log.Fatal(err2)
+		// log.Fatal(err2)
 	}
 
 	error := json.Unmarshal(routesBody, &routes)
 	if error != nil {
-		log.Fatal(error)
+		// log.Fatal(error)
 	}
 	stoperror := json.Unmarshal(stopsBody, &stops)
 	if stoperror != nil {
-		log.Fatal(stoperror)
+		// log.Fatal(stoperror)
 	}
 	buserror := json.Unmarshal(busesBody, &buses)
 	if buserror != nil {
@@ -217,7 +217,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 		for _, stop := range route.Stops {
 			stopAsInt, err := strconv.Atoi(stop)
 			if err != nil {
-				log.Fatal(err)
+				//log.Fatal(err)
 			}
 			stopToInt = append(stopToInt, stopAsInt)
 		}
