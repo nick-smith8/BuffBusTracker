@@ -45,7 +45,9 @@ func routehandler(w http.ResponseWriter, r *http.Request) {
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
 	for {
+		//t := time.Now()
 		FinalCreator := lib.CreateFinalCreator()
+		//t1 := time.Now()
 		BusJson, StopJson, RouteJson, err := FinalCreator.CreateFinalJson()
 		if err != nil {
 			panic(err)
@@ -53,8 +55,8 @@ func SetJson() {
 		BusJsonToSend = BusJson
 		StopJsonToSend = StopJson
 		RouteJsonToSend = RouteJson
-
 		<-time.After(10 * time.Second)
+		//t2 := time.Now()
 	}
 }
 
