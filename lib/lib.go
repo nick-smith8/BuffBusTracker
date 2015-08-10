@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
+	//"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -62,6 +62,7 @@ type Minutestonextstops struct {
 	StopID  int `json:"stopID"`
 	Minutes int `json:"minutes"`
 }
+
 type BusInfo struct {
 	Routeid     int         `json:"routeID"`
 	Equipmentid string      `json:"equipmentID"`
@@ -71,11 +72,16 @@ type BusInfo struct {
 	Inservice   bool        `json:"inService"`
 }
 type StopInfo struct {
-	ID           int     `json:"id"`
-	Name         string  `json:"name"`
-	Nextbustimes []int   `json:"nextBusTimes"`
-	Lat          float64 `json:"lat"`
-	Lng          float64 `json:"lng"`
+	ID           int            `json:"id"`
+	Name         string         `json:"name"`
+	Nextbustimes []NextBusTimes `json:"nextBusTimes"`
+	Lat          float64        `json:"lat"`
+	Lng          float64        `json:"lng"`
+}
+type NextBusTimes struct {
+	//RouteID int `json:"routeID"`
+	// Minutes            []int `json:"minutes"`
+	Minutestonextstops map[string][]int `json:"minutesToNextStops"`
 }
 type RouteInfo struct {
 	ID    int    `json:"id"`
@@ -119,7 +125,7 @@ func (ri *RouteInfo) SetRouteInfo(Id int, Name string, Stops []int) {
 	ri.Name = Name
 	ri.Stops = Stops
 }
-func (si *StopInfo) SetStopInfo(Id int, Name string, Nextbustimes []int, Lat float64, Lng float64) {
+func (si *StopInfo) SetStopInfo(Id int, Name string, Nextbustimes []NextBusTimes, Lat float64, Lng float64) {
 	si.ID = Id
 	si.Name = Name
 	si.Nextbustimes = Nextbustimes
@@ -143,7 +149,7 @@ func CreateFinalCreator() FinalCreator {
 		// log.Fatal(err)
 	}
 	client2 := Client{Url: BUSES_URL}
-	busesBody, err1 := client2.CallToTheJerks()
+	busFinal, err1 := client2.CallToTheJerks()
 	if err1 != nil {
 		// log.Fatal(err1)
 	}
@@ -153,6 +159,12 @@ func CreateFinalCreator() FinalCreator {
 		// log.Fatal(err2)
 	}
 
+	// var trialData string
+	// trialData = `{[{158 40.013401031494 -105.25121307373 777 <nil> NIS 0 [] <nil> 1437185659000} {290 40.01330947876 -105.25115966797 777 <nil> NIS 0 [] <nil> 1437539381000} {291 40.012531280518 -105.25135040283 777 <nil> NIS 0 [] <nil> 1437419893000} {295 40.013248443604 -105.25086212158 777 <nil> NIS 0 [] <nil> 1438379626000} {296 40.012771606445 -105.25084686279 777 <nil> NIS 0 [] <nil> 1435533198000} {526 40.013538360596 -105.25148773193 777 <nil> NIS 0 [] <nil> 1438707846000} {527 40.013500213623 -105.25144195557 777 <nil> NIS 0 [] <nil> 1438708370000} {619 40.013160705566 -105.25086975098 777 <nil> NIS 0 [] <nil> 1438708405000} {645 40.01335144043 -105.25092315674 777 <nil> NIS 0 [] <nil> 1438449663000} {646 40.014198303223 -105.25109100342 777 <nil> NIS 0 [] <nil> 1438445582000} {707 39.791999816895 -105.0541305542 777 <nil> NIS 0 [] <nil> 1438108373000} {708 40.013339996338 -105.250831604 777 <nil> NIS 0 [] <nil> 1438353760000} {709 40.013149261475 -105.25080871582 777 <nil> NIS 0 [] <nil> 1438262129000} {710 40.01330947876 -105.25106048584 777 <nil> NIS 0 [] <nil> 1438708271000} {711 40.013191223145 -105.25095367432 777 <nil> NIS 0 [] <nil> 1438708410000} {761 40.013168334961 -105.25092315674 777 <nil> NIS 0 [] <nil> 1438707959000} {793 40.013729095459 -105.25067138672 777 <nil> NIS 0 [] <nil> 1438695195000} {794 40.013278961182 -105.25095367432 777 <nil> NIS 0 [] <nil> 1438708405000} {992 26.500799179077 -80.063430786133 777 <nil> NIS 0 [] <nil> 1438708155000} {HOP15 40.02758026123 -105.21266174316 777 <nil> NIS 0 [] <nil> 1438708300000} {HOP16 40.015403747559 -105.28340911865 7 106 PURP_M25 1 [{106 1} {107 3} {108 4} {109 5} {110 6} {111 7} {112 8} {113 9} {114 10} {115 11} {116 12} {117 13} {118 14} {119 15} {120 16} {121 17} {92 18} {93 19} {94 20} {95 21} {96 22} {97 23} {98 24} {99 25} {100 26} {101 27} {102 28} {103 29} {104 30} {105 31}] -1 1438708404000} {HOP17 40.027389526367 -105.21263122559 777 <nil> NIS 0 [] <nil> 1438707904000} {HOP18 40.017398834229 -105.27725982666 6 81 ORNG_M13 1 [{81 0} {82 1} {83 2} {84 3} {85 4} {86 5} {87 6} {88 7} {89 8} {90 9} {64 11} {65 13} {66 14} {67 15} {68 16} {69 17} {70 18} {71 19} {72 20} {73 22} {74 23} {75 24} {76 25} {77 27} {78 28} {79 29} {80 30}] -42 1438708412000} {HOP19 40.021461486816 -105.25375366211 6 90 ORNG_M15 1 [{90 1} {64 3} {65 5} {66 6} {67 7} {68 8} {69 9} {70 10} {71 11} {72 12} {73 14} {74 15} {75 16} {76 17} {77 19} {78 20} {79 21} {80 22} {81 23} {82 24} {83 25} {84 26} {85 27} {86 28} {87 29} {88 30} {89 31}] -3 1438708405000} {HOP20 40.027690887451 -105.21231842041 777 <nil> NIS 0 [] <nil> 1438521319000} {HOP21 40.009120941162 -105.26420593262 6 69 ORNG_M14 1 [{69 0} {70 1} {71 2} {72 3} {73 5} {74 6} {75 7} {76 8} {77 10} {78 11} {79 12} {80 13} {81 14} {82 15} {83 16} {84 17} {85 18} {86 19} {87 20} {88 21} {89 22} {90 23} {64 25} {65 27} {66 28} {67 29} {68 30}] -40 1438708414000} {HOP22 40.02730178833 -105.21272277832 777 <nil> NIS 0 [] <nil> 1438708101000} {HOP23 40.008159637451 -105.25895690918 7 115 PURP_M23 1 [{115 -1} {116 0} {117 1} {118 2} {119 3} {120 4} {121 5} {92 6} {93 7} {94 8} {95 9} {96 10} {97 11} {98 12} {99 13} {100 14} {101 15} {102 16} {103 17} {104 18} {105 19} {106 20} {107 22} {108 23} {109 24} {110 25} {111 26} {112 27} {113 28} {114 29}] -42 1438708411000} {HOP24 40.0227394104 -105.25366973877 7 95 PURP_M26 1 [{95 0} {96 1} {97 2} {98 3} {99 4} {100 5} {101 6} {102 7} {103 8} {104 9} {105 10} {106 11} {107 13} {108 14} {109 15} {110 16} {111 17} {112 18} {113 19} {114 20} {115 21} {116 22} {117 23} {118 24} {119 25} {120 26} {121 27} {92 28} {93 29} {94 30}] 1 1438708408000}]}`
+	// var testSlice []byte
+	// testSlice = []byte(trialData)
+
+	//log.Println(testSlice)
 	error := json.Unmarshal(routesBody, &routes)
 	if error != nil {
 		// log.Fatal(error)
@@ -161,17 +173,19 @@ func CreateFinalCreator() FinalCreator {
 	if stoperror != nil {
 		// log.Fatal(stoperror)
 	}
-	buserror := json.Unmarshal(busesBody, &buses)
+	buserror := json.Unmarshal(busFinal, &buses)
 	if buserror != nil {
+		//log.Println("There was an error: ", err)
 		//log.Fatal("hi3: ", buserror)
 	}
+	//log.Println(buses)
 
 	return FinalCreator{Routes: routes, Stops: stops, Buses: buses}
 }
 
 // Makes the call to the ETA jerks and returns the byte slice of json
 func (c Client) CallToTheJerks() ([]byte, error) {
-	log.Println("Making call to: ", c.Url)
+	//log.Println("Making call to: ", c.Url)
 	req, err := http.NewRequest("GET", c.Url, nil)
 	if err != nil {
 		return nil, err
@@ -202,12 +216,21 @@ func (c Client) CallToTheJerks() ([]byte, error) {
 // Creates the final json to be served by the server
 func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 
+	var found bool = false
 	var service bool
+	//var routeIDForTimes int
 	var nextstopid interface{}
+	var nextBusTimesStart []int
+
+	var i int = 0
 
 	routeCollection := []RouteInfo{}
 	stopCollection := []StopInfo{}
 	busCollection := []BusInfo{}
+	minutesCollection := []NextBusTimes{}
+
+	//var nextbustimes []int
+	//NextBusStruct := NextBusTimes{RouteID: 0, Minutes: nextbustimes}
 
 	busInfo := BusInfo{}
 	stopInfo := StopInfo{}
@@ -224,31 +247,78 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 		routeInfo.SetRouteInfo(route.ID, route.Name, stopToInt)
 		routeCollection = append(routeCollection, routeInfo)
 	}
+
 	//NEED to optomize this....  :(
 	for _, stop := range fc.Stops.GetStops {
-		var nextbustimes []int
+		found = false
+
 		for _, bus := range fc.Buses.GetVehicles {
+
 			if len(bus.Minutestonextstops) != 0 {
 				for _, minute := range bus.Minutestonextstops {
+					str := strconv.Itoa(bus.Routeid)
+
+					found = false
+
 					if minute.StopID == stop.ID && minute.Minutes >= 0 {
-						nextbustimes = append(nextbustimes, minute.Minutes)
+						if i == 0 {
+
+							mapIt := map[string][]int{}
+							nextBusTimesStart = append(nextBusTimesStart, minute.Minutes)
+							mapIt[str] = nextBusTimesStart
+							NextBusStruct := NextBusTimes{Minutestonextstops: mapIt}
+							nextBusTimesStart = nil
+							minutesCollection = append(minutesCollection, NextBusStruct)
+							i += 1
+
+						} else {
+							for _, businfo := range minutesCollection {
+								for route, times := range businfo.Minutestonextstops {
+									if route == str {
+										//minutesCollection[i].Minutes = append(businfo.Minutes, minute.Minutes)
+										//str := strconv.Itoa(bus.Routeid)
+										times = append(times, minute.Minutes)
+										found = true
+									}
+									if found != true {
+										mapIt := map[string][]int{}
+										//str := strconv.Itoa(bus.Routeid)
+										nextBusTimesStart = append(nextBusTimesStart, minute.Minutes)
+										mapIt[str] = nextBusTimesStart
+										NextBusStruct := NextBusTimes{Minutestonextstops: mapIt}
+										nextBusTimesStart = nil
+										minutesCollection = append(minutesCollection, NextBusStruct)
+										found = false
+									}
+								}
+							}
+						}
+
 					}
 				}
 			}
 		}
 
-		sort.Ints(nextbustimes)
-
+		for i, _ := range minutesCollection {
+			//sort.Ints(minutesCollection[i].Minutes)
+			for _, min := range minutesCollection[i].Minutestonextstops {
+				sort.Ints(min)
+			}
+		}
 		if strings.EqualFold(stop.Name, "Euclid") {
 			stop.Name = "UMC"
 		}
-
+		//nextBusStruct := NextBusTimes{}
 		if !strings.EqualFold(stop.Name, "30th and Colorado E Bound") && !strings.EqualFold(stop.Name, "30th and Colorado WB") {
-			stopInfo.SetStopInfo(stop.ID, stop.Name, nextbustimes, stop.Lat, stop.Lng)
+			stopInfo.SetStopInfo(stop.ID, stop.Name, minutesCollection, stop.Lat, stop.Lng)
 			stopCollection = append(stopCollection, stopInfo)
 		}
 
+		minutesCollection = nil
+		i = 0
+
 	}
+
 	for _, bus := range fc.Buses.GetVehicles {
 		if bus.Inservice == 0 {
 			service = false
