@@ -75,14 +75,8 @@ type StopInfo struct {
 	ID                int              `json:"id"`
 	Name              string           `json:"name"`
 	NextBusTimesFinal map[string][]int `json:"nextBusTimes"`
-	Nextbustimes      []NextBusTimes   `json:"nextBusTimes2"`
 	Lat               float64          `json:"lat"`
 	Lng               float64          `json:"lng"`
-}
-type NextBusTimes struct {
-	//RouteID int `json:"routeID"`
-	// Minutes            []int `json:"minutes"`
-	Minutestonextstops map[string][]int `json:"minutesToNextStops"`
 }
 type RouteInfo struct {
 	ID    int    `json:"id"`
@@ -126,11 +120,10 @@ func (ri *RouteInfo) SetRouteInfo(Id int, Name string, Stops []int) {
 	ri.Name = Name
 	ri.Stops = Stops
 }
-func (si *StopInfo) SetStopInfo(Id int, Name string, NextBusTimesFinal map[string][]int, Nextbustimes []NextBusTimes, Lat float64, Lng float64) {
+func (si *StopInfo) SetStopInfo(Id int, Name string, NextBusTimesFinal map[string][]int, Lat float64, Lng float64) {
 	si.ID = Id
 	si.Name = Name
 	si.NextBusTimesFinal = NextBusTimesFinal
-	si.Nextbustimes = Nextbustimes
 	si.Lat = Lat
 	si.Lng = Lng
 }
@@ -229,7 +222,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 	routeCollection := []RouteInfo{}
 	stopCollection := []StopInfo{}
 	busCollection := []BusInfo{}
-	minutesCollection := []NextBusTimes{}
+	//minutesCollection := []NextBusTimes{}
 
 	//timesCollection := map[string][]int
 
@@ -271,37 +264,22 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 							//mapIt := map[string][]int{}
 							nextBusTimesStart = append(nextBusTimesStart, minute.Minutes)
 							mapIt[str] = nextBusTimesStart
-							NextBusStruct := NextBusTimes{Minutestonextstops: mapIt}
 							nextBusTimesStart = nil
-							minutesCollection = append(minutesCollection, NextBusStruct)
 							i += 1
 
 						} else {
-							for _, businfo := range minutesCollection {
-								for route, times := range businfo.Minutestonextstops {
-									if route == str {
-										//minutesCollection[i].Minutes = append(businfo.Minutes, minute.Minutes)
-										//str := strconv.Itoa(bus.Routeid)
-										times = append(times, minute.Minutes)
-										found = true
-
-										for k := range mapIt {
-
-											mapIt[k] = append(mapIt[k], minute.Minutes)
-
-										}
+							for k := range mapIt {
+								if k == str {
+									found = true
+									for k := range mapIt {
+										mapIt[k] = append(mapIt[k], minute.Minutes)
 									}
-									if found != true {
-										//mapIt := map[string][]int{}
-										//str := strconv.Itoa(bus.Routeid)
-
-										nextBusTimesStart = append(nextBusTimesStart, minute.Minutes)
-										mapIt[str] = nextBusTimesStart
-										NextBusStruct := NextBusTimes{Minutestonextstops: mapIt}
-										nextBusTimesStart = nil
-										minutesCollection = append(minutesCollection, NextBusStruct)
-										found = false
-									}
+								}
+								if found != true {
+									nextBusTimesStart = append(nextBusTimesStart, minute.Minutes)
+									mapIt[str] = nextBusTimesStart
+									nextBusTimesStart = nil
+									found = false
 								}
 							}
 						}
@@ -311,21 +289,18 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 			}
 		}
 
-		for i, _ := range minutesCollection {
-			//sort.Ints(minutesCollection[i].Minutes)
-			for _, min := range minutesCollection[i].Minutestonextstops {
-				sort.Ints(min)
-			}
+		for k := range mapIt {
+			sort.Ints(mapIt[k])
 		}
+
 		if strings.EqualFold(stop.Name, "Euclid") {
 			stop.Name = "UMC"
 		}
 
 		if !strings.EqualFold(stop.Name, "30th and Colorado E Bound") && !strings.EqualFold(stop.Name, "30th and Colorado WB") {
-			stopInfo.SetStopInfo(stop.ID, stop.Name, mapIt, minutesCollection, stop.Lat, stop.Lng)
+			stopInfo.SetStopInfo(stop.ID, stop.Name, mapIt, stop.Lat, stop.Lng)
 			stopCollection = append(stopCollection, stopInfo)
 		}
-		minutesCollection = nil
 		i = 0
 
 	}
