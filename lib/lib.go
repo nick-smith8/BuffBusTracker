@@ -4,11 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-<<<<<<< HEAD
-	_"log"
-=======
 	//"log"
->>>>>>> bb7cbf5e2a72d06efc3de71a2b17be007646f6b1
 	"net/http"
 	"sort"
 	"strconv"
