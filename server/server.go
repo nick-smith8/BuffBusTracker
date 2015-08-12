@@ -1,7 +1,7 @@
 package main
 
 import (
-	"BuffBusTracker/lib"
+	"buffbus/lib"
 	"log"
 	"net/http"
 	"time"
