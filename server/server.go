@@ -1,12 +1,10 @@
 package main
 
 import (
-	"time"
-	//"fmt"
-	//"encoding/json"
-	"buffbus/lib"
+	"BuffBusTracker/lib"
 	"log"
 	"net/http"
+	"time"
 )
 
 const (
@@ -71,5 +69,5 @@ func main() {
 	go SetJson()
 
 	// Listen on port 8080 and fail if anything bad happens
-	go log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
