@@ -1,7 +1,2 @@
-Simple server that pulls from eta api and constructs the json to be sent by our api
+Simple server that pulls from eta api, formats the data to the JSON format needed by our IOS app and creates an api for the access of that data
 
-TODO 
-
-REST API
-Add service announcements
-Agree upon correct json format
