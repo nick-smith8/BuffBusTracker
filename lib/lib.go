@@ -62,11 +62,10 @@ type Minutestonextstops struct {
 
 type BusInfo struct {
 	Routeid     int         `json:"routeID"`
-	Equipmentid string      `json:"equipmentID"`
+	// Equipmentid string      `json:"equipmentID"`
 	Lat         float64     `json:"lat"`
 	Lng         float64     `json:"lng"`
-	Nextstopid  interface{} `json:"nextStopID"`
-	Inservice   bool        `json:"inService"`
+	// Nextstopid  interface{} `json:"nextStopID"`
 }
 type StopInfo struct {
 	ID                int              `json:"id"`
@@ -103,13 +102,10 @@ type Creator interface {
 }
 
 // Have some setters because why not :)
-func (bi *BusInfo) SetBusInfo(Routeid int, Equipmentid string, Lat float64, Lng float64, Nextstopid interface{}, Inservice bool) {
+func (bi *BusInfo) SetBusInfo(Routeid int, Lat float64, Lng float64) {
 	bi.Routeid = Routeid
-	bi.Equipmentid = Equipmentid
 	bi.Lat = Lat
 	bi.Lng = Lng
-	bi.Nextstopid = Nextstopid
-	bi.Inservice = Inservice
 }
 func (ri *RouteInfo) SetRouteInfo(Id int, Name string, Stops []int) {
 	ri.ID = Id
@@ -204,9 +200,6 @@ func (c Client) CallToTheJerks() ([]byte, error) {
 // Creates the final json to be served by the server
 func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 
-	var service bool
-
-	var nextstopid interface{}
 	var nextBusTimesStart []int
 
 	routeCollection := []RouteInfo{}
@@ -219,10 +212,11 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 	for _, route := range fc.Routes.GetRoutes {
 		var stopToInt []int
 		for _, stop := range route.Stops {
-			stopAsInt, err := strconv.Atoi(stop)
-			if err != nil {
-			}
+			stopAsInt, _ := strconv.Atoi(stop)
 			stopToInt = append(stopToInt, stopAsInt)
+		}
+		if strings.EqualFold(route.Name,"Will Vill - Brown Line"){
+			route.Name = "Buff Bus"
 		}
 		routeInfo.SetRouteInfo(route.ID, route.Name, stopToInt)
 		routeCollection = append(routeCollection, routeInfo)
@@ -264,18 +258,10 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 	}
 
 	for _, bus := range fc.Buses.GetVehicles {
-		if bus.Inservice == 0 {
-			service = false
-		} else {
-			service = true
-		}
-		if bus.Nextstopid == nil {
-			nextstopid = -200
-		} else {
-			nextstopid = bus.Nextstopid
-		}
-		busInfo.SetBusInfo(bus.Routeid, bus.Equipmentid, bus.Lat, bus.Lng, nextstopid, service)
+		if bus.Routeid != 777 {
+		busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng,)
 		busCollection = append(busCollection, busInfo)
+		}
 	}
 
 	busJson, err := json.Marshal(busCollection)
