@@ -37,7 +37,7 @@ start() {
     fi
     docker run \
    	 --name $CONTAINER_NAME -h $CONTAINER_NAME \
-        -v `pwd`:/go/src/buffbus/ \
+        -v `pwd`:/go/src/BuffBusTracker/ \
         -p 8080:8080 \
         -d -t $IMAGE_NAME
     return $?
