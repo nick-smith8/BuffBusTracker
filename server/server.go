@@ -19,6 +19,7 @@ var (
 	BusJsonToSend   []byte
 	StopJsonToSend  []byte
 	RouteJsonToSend []byte
+	AnnouncementJsonToSend []byte
 )
 
 type myHandler struct{}
@@ -39,6 +40,11 @@ func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write(RouteJsonToSend)
 }
+func announcementhandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(AnnouncementJsonToSend)
+}
 
 // Sets the global variables to the json that will be sent
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
@@ -47,13 +53,14 @@ func SetJson() {
 		//t := time.Now()
 		FinalCreator := lib.CreateFinalCreator()
 		//t1 := time.Now()
-		BusJson, StopJson, RouteJson, err := FinalCreator.CreateFinalJson()
+		BusJson, StopJson, RouteJson, AnnouncementJson, err := FinalCreator.CreateFinalJson()
 		if err != nil {
-			panic(err)
+			// panic(err)
 		}
 		BusJsonToSend = BusJson
 		StopJsonToSend = StopJson
 		RouteJsonToSend = RouteJson
+		AnnouncementJsonToSend = AnnouncementJson 
 		<-time.After(10 * time.Second)
 		//t2 := time.Now()
 	}
@@ -63,6 +70,7 @@ func init() {
 	http.HandleFunc("/buses", bushandler)
 	http.HandleFunc("/stops", stophandler)
 	http.HandleFunc("/routes", routehandler)
+	http.HandleFunc("/announcements",announcementhandler)
 }
 
 func main() {
