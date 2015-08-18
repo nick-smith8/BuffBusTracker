@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements&token=TESTING"
 	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes&token=TESTING"
 	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops&token=TESTING"
 	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1&token=TESTING"
@@ -55,6 +56,18 @@ type Vehicles struct {
 		Receivetime int64       `json:"receiveTime"`
 	} `json:"get_vehicles"`
 }
+
+type Announcements struct {
+	GetServiceAnnouncements []struct {
+		Type string `json:"type"`
+		Announcements []struct {
+			End   string `json:"end"`
+			Start string `json:"start"`
+			Text  string `json:"text"`
+		} `json:"announcements"`
+	} `json:"get_service_announcements"`
+}
+
 type Minutestonextstops struct {
 	StopID  int `json:"stopID"`
 	Minutes int `json:"minutes"`
@@ -62,10 +75,8 @@ type Minutestonextstops struct {
 
 type BusInfo struct {
 	Routeid     int         `json:"routeID"`
-	// Equipmentid string      `json:"equipmentID"`
 	Lat         float64     `json:"lat"`
 	Lng         float64     `json:"lng"`
-	// Nextstopid  interface{} `json:"nextStopID"`
 }
 type StopInfo struct {
 	ID                int              `json:"id"`
@@ -79,6 +90,9 @@ type RouteInfo struct {
 	Name  string `json:"name"`
 	Stops []int  `json:"stops"`
 }
+type AnnouncementInfo struct {
+	Announcements []string
+}
 type FinalPackage struct {
 	BusInfo   []BusInfo
 	StopInfo  []StopInfo
@@ -88,6 +102,7 @@ type FinalCreator struct {
 	Routes Routes
 	Stops  Stops
 	Buses  Vehicles
+	Announcements Announcements
 }
 type Client struct {
 	Url string
@@ -95,7 +110,7 @@ type Client struct {
 
 // Lets make this into an interface so we can make great testable code
 type Caller interface {
-	CallToTheJerks() []byte
+	httpCall() []byte
 }
 type Creator interface {
 	CreateFinalJson() (*[]byte, error)
@@ -129,21 +144,27 @@ func CreateFinalCreator() FinalCreator {
 	routes := Routes{}
 	stops := Stops{}
 	buses := Vehicles{}
+	announcements := Announcements{}
 
 	client := Client{Url: ROUTES_URL}
-	routesBody, err := client.CallToTheJerks()
+	routesBody, err := client.httpCall()
 	if err != nil {
 		// log.Fatal(err)
 	}
 	client2 := Client{Url: BUSES_URL}
-	busBody, err1 := client2.CallToTheJerks()
+	busBody, err1 := client2.httpCall()
 	if err1 != nil {
 		// log.Fatal(err1)
 	}
 	client3 := Client{Url: STOPS_URL}
-	stopsBody, err2 := client3.CallToTheJerks()
+	stopsBody, err2 := client3.httpCall()
 	if err2 != nil {
 		// log.Fatal(err2)
+	}
+	client4 := Client{Url: ANNOUNCEMENTS_URL}
+	announcementBody, err3 := client4.httpCall()
+	if err3 != nil {
+		// log.Fatal(err3)
 	}
 	// var trialData string
 	// trialData = `{"get_vehicles":[{"equipmentID":"158","lat":40.013401031494,"lng":-105.25121307373,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1437185659000},	{"equipmentID":"290","lat":40.013431549072,"lng":-105.25140380859,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247436000},	{"equipmentID":"291","lat":40.013328552246,"lng":-105.25112915039,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247432000},	{"equipmentID":"295","lat":40.013229370117,"lng":-105.25089263916,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439147092000},	{"equipmentID":"296","lat":40.012771606445,"lng":-105.25084686279,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1435533198000},	{"equipmentID":"526","lat":40.014209747314,"lng":-105.25131225586,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247254000},	{"equipmentID":"527","lat":40.013248443604,"lng":-105.25126647949,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247335000},	{"equipmentID":"619","lat":40.014099121094,"lng":-105.25102996826,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439231348000},	{"equipmentID":"645","lat":40.013290405273,"lng":-105.25087738037,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247334000},	{"equipmentID":"646","lat":40.012409210205,"lng":-105.25135040283,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1438957148000},	{"equipmentID":"707","lat":39.79674911499,"lng":-104.91011047363,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439221559000},	{"equipmentID":"708","lat":40.013359069824,"lng":-105.25093841553,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247350000},	{"equipmentID":"709","lat":40.013149261475,"lng":-105.25080871582,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1438954567000},	{"equipmentID":"710","lat":40.013198852539,"lng":-105.25084686279,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439042488000},	{"equipmentID":"711","lat":40.013191223145,"lng":-105.2508392334,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439072495000},	{"equipmentID":"761","lat":39.791809082031,"lng":-105.0542678833,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247358000},	{"equipmentID":"793","lat":40.013729095459,"lng":-105.25067138672,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439001138000},	{"equipmentID":"794","lat":40.013278961182,"lng":-105.25095367432,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247393000},	{"equipmentID":"TEST","lat":40.027400970459,"lng":-105.2126083374,"routeID":9,"nextStopID":93,"scheduleNumber":"PURP_M32","inService":1,"minutesToNextStops":[{"stopID":130,"minutes":68,"time":""},{"stopID":132,"minutes":67,"time":""},{"stopID":71,"minutes":69,"time":""}],"onSchedule":0,"receiveTime":1439247396000},{"equipmentID":"HOP15","lat":40.027400970459,"lng":-105.2126083374,"routeID":7,"nextStopID":93,"scheduleNumber":"PURP_M32","inService":1,"minutesToNextStops":[{"stopID":93,"minutes":-4,"time":""},{"stopID":94,"minutes":-3,"time":""},{"stopID":95,"minutes":-2,"time":""},{"stopID":96,"minutes":-1,"time":""},{"stopID":97,"minutes":0,"time":""},{"stopID":98,"minutes":1,"time":""},{"stopID":99,"minutes":2,"time":""},{"stopID":100,"minutes":3,"time":""},{"stopID":101,"minutes":4,"time":""},{"stopID":102,"minutes":5,"time":""},{"stopID":103,"minutes":6,"time":""},{"stopID":104,"minutes":7,"time":""},{"stopID":105,"minutes":8,"time":""},{"stopID":106,"minutes":9,"time":""},{"stopID":107,"minutes":11,"time":""},{"stopID":108,"minutes":12,"time":""},{"stopID":109,"minutes":13,"time":""},{"stopID":110,"minutes":14,"time":""},{"stopID":111,"minutes":15,"time":""},{"stopID":112,"minutes":16,"time":""},{"stopID":113,"minutes":17,"time":""},{"stopID":114,"minutes":18,"time":""},{"stopID":115,"minutes":19,"time":""},{"stopID":116,"minutes":20,"time":""},{"stopID":117,"minutes":21,"time":""},{"stopID":118,"minutes":22,"time":""},{"stopID":119,"minutes":23,"time":""},{"stopID":120,"minutes":24,"time":""},{"stopID":121,"minutes":25,"time":""},{"stopID":92,"minutes":26,"time":""}],"onSchedule":0,"receiveTime":1439247396000},{"equipmentID":"HOP16","lat":40.020130157471,"lng":-105.25392913818,"routeID":7,"nextStopID":94,"scheduleNumber":"PURP_M53","inService":1,"minutesToNextStops":[{"stopID":94,"minutes":1,"time":""},{"stopID":95,"minutes":2,"time":""},{"stopID":96,"minutes":3,"time":""},{"stopID":97,"minutes":4,"time":""},{"stopID":98,"minutes":5,"time":""},{"stopID":99,"minutes":6,"time":""},{"stopID":100,"minutes":7,"time":""},{"stopID":101,"minutes":8,"time":""},{"stopID":102,"minutes":9,"time":""},{"stopID":103,"minutes":10,"time":""},{"stopID":104,"minutes":11,"time":""},{"stopID":105,"minutes":12,"time":""},{"stopID":106,"minutes":13,"time":""},{"stopID":107,"minutes":15,"time":""},{"stopID":108,"minutes":16,"time":""},{"stopID":109,"minutes":17,"time":""},{"stopID":110,"minutes":18,"time":""},{"stopID":111,"minutes":19,"time":""},{"stopID":112,"minutes":20,"time":""},{"stopID":113,"minutes":21,"time":""},{"stopID":114,"minutes":22,"time":""},{"stopID":115,"minutes":23,"time":""},{"stopID":116,"minutes":24,"time":""},{"stopID":117,"minutes":25,"time":""},{"stopID":118,"minutes":26,"time":""},{"stopID":119,"minutes":27,"time":""},{"stopID":120,"minutes":28,"time":""},{"stopID":121,"minutes":29,"time":""},{"stopID":92,"minutes":30,"time":""},{"stopID":93,"minutes":31,"time":""}],"onSchedule":-2,"receiveTime":1439247429000},	{"equipmentID":"HOP17","lat":40.027500152588,"lng":-105.21218109131,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439246874000},{"equipmentID":"HOP18","lat":40.022094726562,"lng":-105.25918579102,"routeID":6,"nextStopID":88,"scheduleNumber":"ORNG_M53","inService":1,"minutesToNextStops":[{"stopID":88,"minutes":1,"time":""},{"stopID":89,"minutes":2,"time":""},{"stopID":90,"minutes":3,"time":""},{"stopID":64,"minutes":5,"time":""},{"stopID":65,"minutes":7,"time":""},{"stopID":66,"minutes":8,"time":""},{"stopID":67,"minutes":9,"time":""},{"stopID":68,"minutes":10,"time":""},{"stopID":69,"minutes":11,"time":""},{"stopID":70,"minutes":12,"time":""},{"stopID":71,"minutes":13,"time":""},{"stopID":72,"minutes":14,"time":""},{"stopID":73,"minutes":16,"time":""},{"stopID":74,"minutes":17,"time":""},{"stopID":75,"minutes":18,"time":""},{"stopID":76,"minutes":19,"time":""},{"stopID":77,"minutes":21,"time":""},{"stopID":78,"minutes":22,"time":""},{"stopID":79,"minutes":23,"time":""},{"stopID":80,"minutes":24,"time":""},{"stopID":81,"minutes":25,"time":""},{"stopID":82,"minutes":26,"time":""},{"stopID":83,"minutes":27,"time":""},{"stopID":84,"minutes":28,"time":""},{"stopID":85,"minutes":29,"time":""},{"stopID":86,"minutes":30,"time":""},{"stopID":87,"minutes":31,"time":""}],"onSchedule":-7,"receiveTime":1439247426000},	{"equipmentID":"HOP19","lat":40.016441345215,"lng":-105.26293182373,"routeID":7,"nextStopID":116,"scheduleNumber":"PURP_M51","inService":1,"minutesToNextStops":[{"stopID":116,"minutes":1,"time":""},{"stopID":117,"minutes":2,"time":""},{"stopID":118,"minutes":3,"time":""},{"stopID":119,"minutes":4,"time":""},{"stopID":120,"minutes":5,"time":""},{"stopID":121,"minutes":6,"time":""},{"stopID":92,"minutes":7,"time":""},{"stopID":93,"minutes":8,"time":""},{"stopID":94,"minutes":9,"time":""},{"stopID":95,"minutes":10,"time":""},{"stopID":96,"minutes":11,"time":""},{"stopID":97,"minutes":12,"time":""},{"stopID":98,"minutes":13,"time":""},{"stopID":99,"minutes":14,"time":""},{"stopID":100,"minutes":15,"time":""},{"stopID":101,"minutes":16,"time":""},{"stopID":102,"minutes":17,"time":""},{"stopID":103,"minutes":18,"time":""},{"stopID":104,"minutes":19,"time":""},{"stopID":105,"minutes":20,"time":""},{"stopID":106,"minutes":21,"time":""},{"stopID":107,"minutes":23,"time":""},{"stopID":108,"minutes":24,"time":""},{"stopID":109,"minutes":25,"time":""},{"stopID":110,"minutes":26,"time":""},{"stopID":111,"minutes":27,"time":""},{"stopID":112,"minutes":28,"time":""},{"stopID":113,"minutes":29,"time":""},{"stopID":114,"minutes":30,"time":""},{"stopID":115,"minutes":31,"time":""}],"onSchedule":-19,"receiveTime":1439247432000},	{"equipmentID":"HOP20","lat":40.017078399658,"lng":-105.25608825684,"routeID":6,"nextStopID":65,"scheduleNumber":"ORNG_M55","inService":1,"minutesToNextStops":[{"stopID":65,"minutes":1,"time":""},{"stopID":66,"minutes":2,"time":""},{"stopID":67,"minutes":3,"time":""},{"stopID":68,"minutes":4,"time":""},{"stopID":69,"minutes":5,"time":""},{"stopID":70,"minutes":6,"time":""},{"stopID":71,"minutes":7,"time":""},{"stopID":72,"minutes":8,"time":""},{"stopID":73,"minutes":10,"time":""},{"stopID":74,"minutes":11,"time":""},{"stopID":75,"minutes":12,"time":""},{"stopID":76,"minutes":13,"time":""},{"stopID":77,"minutes":15,"time":""},{"stopID":78,"minutes":16,"time":""},{"stopID":79,"minutes":17,"time":""},{"stopID":80,"minutes":18,"time":""},{"stopID":81,"minutes":19,"time":""},{"stopID":82,"minutes":20,"time":""},{"stopID":83,"minutes":21,"time":""},{"stopID":84,"minutes":22,"time":""},{"stopID":85,"minutes":23,"time":""},{"stopID":86,"minutes":24,"time":""},{"stopID":87,"minutes":25,"time":""},{"stopID":88,"minutes":26,"time":""},{"stopID":89,"minutes":27,"time":""},{"stopID":90,"minutes":28,"time":""},{"stopID":64,"minutes":30,"time":""}],"onSchedule":-6,"receiveTime":1439247429000},{"equipmentID":"HOP21","lat":40.007129669189,"lng":-105.27439117432,"routeID":6,"nextStopID":73,"scheduleNumber":"ORNG_M54","inService":1,"minutesToNextStops":[{"stopID":73,"minutes":1,"time":""},{"stopID":74,"minutes":2,"time":""},{"stopID":75,"minutes":3,"time":""},{"stopID":76,"minutes":4,"time":""},{"stopID":77,"minutes":6,"time":""},{"stopID":78,"minutes":7,"time":""},{"stopID":79,"minutes":8,"time":""},{"stopID":80,"minutes":9,"time":""},{"stopID":81,"minutes":10,"time":""},{"stopID":82,"minutes":11,"time":""},{"stopID":83,"minutes":12,"time":""},{"stopID":84,"minutes":13,"time":""},{"stopID":85,"minutes":14,"time":""},{"stopID":86,"minutes":15,"time":""},{"stopID":87,"minutes":16,"time":""},{"stopID":88,"minutes":17,"time":""},{"stopID":89,"minutes":18,"time":""},{"stopID":90,"minutes":19,"time":""},{"stopID":64,"minutes":21,"time":""},{"stopID":65,"minutes":23,"time":""},{"stopID":66,"minutes":24,"time":""},{"stopID":67,"minutes":25,"time":""},{"stopID":68,"minutes":26,"time":""},{"stopID":69,"minutes":27,"time":""},{"stopID":70,"minutes":28,"time":""},{"stopID":71,"minutes":29,"time":""},{"stopID":72,"minutes":30,"time":""}],"onSchedule":-13,"receiveTime":1439247425000},{"equipmentID":"HOP22","lat":40.019050598145,"lng":-105.28005981445,"routeID":7,"nextStopID":104,"scheduleNumber":"PURP_M52","inService":1,"minutesToNextStops":[{"stopID":104,"minutes":0,"time":""},{"stopID":105,"minutes":1,"time":""},{"stopID":106,"minutes":2,"time":""},{"stopID":107,"minutes":4,"time":""},{"stopID":108,"minutes":5,"time":""},{"stopID":109,"minutes":6,"time":""},{"stopID":110,"minutes":7,"time":""},{"stopID":111,"minutes":8,"time":""},{"stopID":112,"minutes":9,"time":""},{"stopID":113,"minutes":10,"time":""},{"stopID":114,"minutes":11,"time":""},{"stopID":115,"minutes":12,"time":""},{"stopID":116,"minutes":13,"time":""},{"stopID":117,"minutes":14,"time":""},{"stopID":118,"minutes":15,"time":""},{"stopID":119,"minutes":16,"time":""},{"stopID":120,"minutes":17,"time":""},{"stopID":121,"minutes":18,"time":""},{"stopID":92,"minutes":19,"time":""},{"stopID":93,"minutes":20,"time":""},{"stopID":94,"minutes":21,"time":""},{"stopID":95,"minutes":22,"time":""},{"stopID":96,"minutes":23,"time":""},{"stopID":97,"minutes":24,"time":""},{"stopID":98,"minutes":25,"time":""},{"stopID":99,"minutes":26,"time":""},{"stopID":100,"minutes":27,"time":""},{"stopID":101,"minutes":28,"time":""},{"stopID":102,"minutes":29,"time":""},{"stopID":103,"minutes":30,"time":""}],"onSchedule":-7,"receiveTime":1439247429000},{"equipmentID":"HOP23","lat":39.870750427246,"lng":-104.89804077148,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439037747000},{"equipmentID":"HOP24","lat":40.027698516846,"lng":-105.21208190918,"routeID":777,"nextStopID":null,"scheduleNumber":"NIS","inService":0,"minutesToNextStops":{},"onSchedule":null,"receiveTime":1439247205000}]}`
@@ -163,12 +184,15 @@ func CreateFinalCreator() FinalCreator {
 	if buserror != nil {
 		//log.Fatal("hi3: ", buserror)
 	}
+	announcementerror := json.Unmarshal(announcementBody, &announcements)
+	if announcementerror != nil {
 
-	return FinalCreator{Routes: routes, Stops: stops, Buses: buses}
+	}
+	return FinalCreator{Routes: routes, Stops: stops, Buses: buses,Announcements:announcements}
 }
 
 // Makes the call to the ETA jerks and returns the byte slice of json
-func (c Client) CallToTheJerks() ([]byte, error) {
+func (c Client) httpCall() ([]byte, error) {
 	//log.Println("Making call to: ", c.Url)
 	req, err := http.NewRequest("GET", c.Url, nil)
 	if err != nil {
@@ -198,9 +222,10 @@ func (c Client) CallToTheJerks() ([]byte, error) {
 }
 
 // Creates the final json to be served by the server
-func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
+func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error) {
 
 	var nextBusTimesStart []int
+	var announcementString []string
 
 	routeCollection := []RouteInfo{}
 	stopCollection := []StopInfo{}
@@ -209,6 +234,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 	busInfo := BusInfo{}
 	stopInfo := StopInfo{}
 	routeInfo := RouteInfo{}
+
 	for _, route := range fc.Routes.GetRoutes {
 		var stopToInt []int
 		for _, stop := range route.Stops {
@@ -264,21 +290,35 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, error) {
 		}
 	}
 
+	for _, announcement := range fc.Announcements.GetServiceAnnouncements {
+		for _,message := range announcement.Announcements {
+			if message.Text != "" {
+				announcementString = append(announcementString,message.Text)
+			}
+		}
+	}
+
+	announcementInfo := AnnouncementInfo{Announcements: announcementString}
+
 	busJson, err := json.Marshal(busCollection)
 	if err != nil {
 		log.Println("Error Marshalling the JSON for the Audit", err)
-		return nil, nil, nil, err
+		//return nil, nil, nil, err
 	}
 	stopJson, err := json.Marshal(stopCollection)
 	if err != nil {
 		log.Println("Error Marshalling the JSON for the Audit", err)
-		return nil, nil, nil, err
+		//return nil, nil, nil, err
 	}
 	routeJson, err := json.Marshal(routeCollection)
 	if err != nil {
 		log.Println("Error Marshalling the JSON for the Audit", err)
-		return nil, nil, nil, err
+		//return nil, nil, nil, err
+	}
+	announcementJson, err := json.Marshal(announcementInfo)
+	if err != nil {
+		log.Println("Error marshalling the JSOM for the Audit", err)
 	}
 
-	return busJson, stopJson, routeJson, nil
+	return busJson, stopJson, routeJson,announcementJson, nil
 }
