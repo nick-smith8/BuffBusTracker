@@ -91,7 +91,7 @@ type RouteInfo struct {
 	Stops []int  `json:"stops"`
 }
 type AnnouncementInfo struct {
-	Announcements []string
+	Announcements []string `json:"announcements"`
 }
 type FinalPackage struct {
 	BusInfo   []BusInfo
