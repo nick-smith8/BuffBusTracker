@@ -272,7 +272,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 		for k := range mapIt {
 			sort.Ints(mapIt[k])
 		}
-		if strings.EqualFold(stop.Name, "Discovery Learning Center") {
+		if strings.EqualFold(stop.Name, "Discovery Learning Center") || strings.EqualFold(stop.Name, "Public Safety"){
 			stop.Name = "Engineering Center"
 		}
 		if strings.EqualFold(stop.Name, "Euclid") {
