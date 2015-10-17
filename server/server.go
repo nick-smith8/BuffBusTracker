@@ -26,23 +26,22 @@ var (
 type myHandler struct{}
 
 func analyticsRequest(s string, i string) {
-	g := strings.Split(i,":")
-	resp, err := http.Get("http://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-68940534-1&cid=555&dh=cherishapps.me&dp=%2F"+s+"&uip="+g[0])
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
 
+	// Strip off the ip of the client and send it with the analytics
+	resp, err := http.Get("http://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-68940534-1&cid=555&dh=cherishapps.me&dp=%2F" + s + "&uip=" + strings.Split(i,":")[0])
+	if err != nil {
+		log.Println(err)
+	}
+	resp.Body.Close()
 }
 
 // Define the different functions to handle the routes
 func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(BusJsonToSend)
-	
+	w.Write(BusJsonToSend)	
+
 	go analyticsRequest("buses",r.RemoteAddr)
-	
 
 }
 func stophandler(w http.ResponseWriter, r *http.Request) {
@@ -57,15 +56,13 @@ func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(RouteJsonToSend)
-	
-	go analyticsRequest("routes",r.RemoteAddr)
+
+	go analyticsRequest("routes",r.RemoteAddr)	
 }
 func announcementhandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(AnnouncementJsonToSend)
-
-	go analyticsRequest("announcements",r.RemoteAddr)
 }
 
 // Sets the global variables to the json that will be sent
