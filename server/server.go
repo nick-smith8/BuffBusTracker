@@ -31,8 +31,8 @@ func analyticsRequest(s string, i string) {
 	resp, err := http.Get("http://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-68940534-1&cid=555&dh=cherishapps.me&dp=%2F" + s + "&uip=" + strings.Split(i,":")[0])
 	if err != nil {
 		log.Println(err)
-	}
-	resp.Body.Close()
+	}	
+	defer	resp.Body.Close()
 }
 
 // Define the different functions to handle the routes
@@ -40,9 +40,6 @@ func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(BusJsonToSend)	
-
-	go analyticsRequest("buses",r.RemoteAddr)
-
 }
 func stophandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -56,8 +53,6 @@ func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(RouteJsonToSend)
-
-	go analyticsRequest("routes",r.RemoteAddr)	
 }
 func announcementhandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
