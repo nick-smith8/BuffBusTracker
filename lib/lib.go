@@ -191,7 +191,7 @@ func CreateFinalCreator() FinalCreator {
 	return FinalCreator{Routes: routes, Stops: stops, Buses: buses,Announcements:announcements}
 }
 
-// Makes the call to the ETA jerks and returns the byte slice of json
+// Makes the call to ETA and returns the byte slice of json
 func (c Client) httpCall() ([]byte, error) {
 	//log.Println("Making call to: ", c.Url)
 	req, err := http.NewRequest("GET", c.Url, nil)
