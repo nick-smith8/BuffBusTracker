@@ -17,13 +17,19 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell}"
+    echo "Usage: $0 {build|start|restart|stop|shell|show}"
     return 0
 }
 
 build() {
     echo -e "Building $IMAGE_NAME...\n"
     sudo docker build -t $IMAGE_NAME .
+    return $?
+}
+
+show() {
+    echo -e "Showing unique Ips..."
+    docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c
     return $?
 }
 
@@ -79,6 +85,9 @@ case $1 in
         ;;
     stop)
        stop
+        ;;
+    show)
+       show
         ;;
     shell)
         shell

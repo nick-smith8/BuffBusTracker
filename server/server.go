@@ -45,8 +45,8 @@ func stophandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(StopJsonToSend)
-
-	go analyticsRequest("stops",r.RemoteAddr)
+	log.Println(r.RemoteAddr)
+	//go analyticsRequest("stops",r.RemoteAddr)
 
 }
 func routehandler(w http.ResponseWriter, r *http.Request) {
