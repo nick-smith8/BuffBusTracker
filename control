@@ -17,7 +17,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell|show}"
+    echo "Usage: $0 {build|start|restart|stop|shell|show|showUnique}"
     return 0
 }
 
@@ -28,8 +28,14 @@ build() {
 }
 
 show() {
-    echo -e "Showing unique Ips..."
+    echo -e "Showing all Ips..."
     docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c
+    return $?
+}
+
+showUnique() {
+    echo -e "Showing amount of all requests..."
+    docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | awk '{ sum += $1 } END { print sum }'
     return $?
 }
 
@@ -88,6 +94,9 @@ case $1 in
         ;;
     show)
        show
+        ;;
+    showUnique)
+       showUnique
         ;;
     shell)
         shell
