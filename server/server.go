@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes&token=TESTING"
-	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops&token=TESTING"
-	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1&token=TESTING"
+	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes"
+	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops"
+	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
 )
 
 var (
