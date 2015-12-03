@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements&token=TESTING"
-	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes&token=TESTING"
-	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops&token=TESTING"
-	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1&token=TESTING"
+	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements"
+	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes"
+	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops"
+	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
 )
 
 // Test data for if server is down
