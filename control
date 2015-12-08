@@ -17,7 +17,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell|show|showUnique|analyze}"
+    echo "Usage: $0 {build|start|restart|stop|shell|show|showUnique|analyze|daily}"
     return 0
 }
 
@@ -41,8 +41,12 @@ showUnique() {
 
 analyze() {
 	WC=$(docker logs $CONTAINER_NAME | wc -l)
-	docker logs buffbus-server | cut -d" " -f2 | cut -d: -f1 | sort | uniq -c | awk -v WC="$WC" '{PERCENT = ($1/WC)*100; printf" Hour: %d Total requests: %d Percent: %.2f%\n",$2,$1,PERCENT }'
+	docker logs $CONTAINER_NAME | cut -d" " -f2 | cut -d: -f1 | sort | uniq -c | awk -v WC="$WC" '{PERCENT = ($1/WC)*100; printf" Hour: %d Total requests: %d Percent: %.2f%\n",$2,$1,PERCENT }'
 	echo "Total requests: $WC"
+}
+daily() {
+	echo -e "Requests, Date"
+	docker logs $CONTAINER_NAME | cut -d" " -f1 | cut -d "/" -f3 | uniq -c
 }
 
 start() {
@@ -103,6 +107,9 @@ case $1 in
         ;;
     showUnique)
        showUnique
+        ;;
+    daily)
+       daily
         ;;
     analyze)
 	analyze
