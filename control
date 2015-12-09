@@ -46,7 +46,7 @@ analyze() {
 }
 daily() {
 	echo -e "Requests, Date"
-	docker logs $CONTAINER_NAME | cut -d" " -f1 | cut -d "/" -f3 | uniq -c
+	docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c
 }
 
 start() {
