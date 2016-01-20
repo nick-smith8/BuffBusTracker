@@ -95,5 +95,5 @@ func main() {
 	go SetJson()
 
 	// Listen on port 8080 and fail if anything bad happens
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
