@@ -17,7 +17,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell|show|showUnique|analyze|daily}"
+    echo "Usage: $0 {build|start|restart|stop|shell|show|showUnique|analyze|daily|memcheck}"
     return 0
 }
 
@@ -48,7 +48,18 @@ daily() {
 	echo -e "Requests, Date"
 	docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c
 }
-
+memcheck(){
+	dockerUsage=$(ls -la /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
+	
+	DU=$(ls -lah /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
+	
+	#125 mb
+	threshold=131072000
+	echo -e "Mem currently at: $DU"	
+	if [ $dockerUsage -gt $threshold ] ; then
+		echo -e "OHHHH NOOOO. lets make a job to remove the logs "
+	fi
+}
 start() {
     echo -e "Starting $CONTAINER_NAME...\n"
     if ! `docker images | grep -q $IMAGE_NAME`; then
@@ -113,6 +124,9 @@ case $1 in
         ;;
     analyze)
 	analyze
+	;;
+    memcheck)
+	memcheck
 	;;
     shell)
         shell
