@@ -59,7 +59,9 @@ func announcementhandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write(AnnouncementJsonToSend)
 }
-
+func publichandler(w http.ResponseWriter, r *http.Request) {
+    http.ServeFile(w,r,"."+r.URL.Path)
+}
 // Sets the global variables to the json that will be sent
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
@@ -85,6 +87,7 @@ func init() {
 	http.HandleFunc("/stops", stophandler)
 	http.HandleFunc("/routes", routehandler)
 	http.HandleFunc("/announcements",announcementhandler)
+	http.HandleFunc("/public/", publichandler)
 }
 
 func main() {
@@ -92,5 +95,5 @@ func main() {
 	go SetJson()
 
 	// Listen on port 8080 and fail if anything bad happens
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
 }
