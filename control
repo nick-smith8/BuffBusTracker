@@ -1,7 +1,7 @@
 #!/bin/bash
-# A basic service management script
+# A basic service management script for the BusTracker
 #
-# chkconfig: 123 69 68
+# chkconfig: 2345 69 68
 # description: Backend API for the BuffBus app
 
 if [ -f /etc/init.d/functions ]; then
@@ -17,37 +17,45 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell|show|showUnique|analyze|daily|memcheck}"
+    echo "Usage: $0 {build|start|restart|stop|shell|show|total|analyze|daily|memcheck}"
     return 0
 }
 
+# Build docker image
 build() {
     echo -e "Building $IMAGE_NAME...\n"
     sudo docker build -t $IMAGE_NAME .
     return $?
 }
 
+# Show connections per IP address 
 show() {
     echo -e "Showing all Ips..."
-    docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c
+    docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | sort -n
     return $?
 }
 
-showUnique() {
+# Show total requests logged 
+total() {
     echo -e "Showing amount of all requests..."
     docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | awk '{ sum += $1 } END { print sum }'
     return $?
 }
 
+# Show requests per hour
 analyze() {
 	WC=$(docker logs $CONTAINER_NAME | wc -l)
 	docker logs $CONTAINER_NAME | cut -d" " -f2 | cut -d: -f1 | sort | uniq -c | awk -v WC="$WC" '{PERCENT = ($1/WC)*100; printf" Hour: %d Total requests: %d Percent: %.2f%\n",$2,$1,PERCENT }'
 	echo "Total requests: $WC"
 }
+
+# Show requests per day
 daily() {
 	echo -e "Requests, Date"
 	docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c
 }
+
+# ???
 memcheck(){
 	dockerUsage=$(ls -la /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
 	
@@ -60,6 +68,8 @@ memcheck(){
 		echo -e "OHHHH NOOOO. lets make a job to remove the logs "
 	fi
 }
+
+# Cleanly start container
 start() {
     echo -e "Starting $CONTAINER_NAME...\n"
     if ! `docker images | grep -q $IMAGE_NAME`; then
@@ -77,12 +87,14 @@ start() {
     return $?
 }
 
+# Restart running container
 restart() {
     echo -e "Restart $CONTAINER_NAME...\n"
     docker restart $CONTAINER_NAME
     return $?
 }
 
+# Stop running container
 stop() {
     echo -e "Stopping $CONTAINER_NAME...\n"
     docker rm -f $CONTAINER_NAME &>/dev/null
@@ -94,11 +106,11 @@ stop() {
     return $?
 }
 
+# Open a shell inside the container
 shell() {
     docker exec -it $CONTAINER_NAME /bin/bash
     return $?
 }
-
 
 case $1 in
     build)
@@ -116,8 +128,8 @@ case $1 in
     show)
        show
         ;;
-    showUnique)
-       showUnique
+    total)
+       total
         ;;
     daily)
        daily
