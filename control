@@ -17,7 +17,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell|show|total|analyze|daily|memcheck}"
+    echo "Usage: $0 {build|start|restart|stop|shell|show|total|analyze|daily|hourly|memcheck}"
     return 0
 }
 
@@ -51,8 +51,15 @@ analyze() {
 
 # Show requests per day
 daily() {
-	echo -e "Requests, Date"
-	docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c
+	echo -e "Date\tRequests"
+	docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c | awk '{print $2"\011"$1}'
+}
+
+hourly() {
+	echo -e "Date\tRequests"
+	#docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk '{print $2,$3":00\011" $1}'
+	docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk '{if(day != $2 && length($2) != 0) {print day,total; total=0; day=$2}; total = total + $1; print "\t"$3":00\t" $1,RN;} END { print $2,total; }'
+
 }
 
 # ???
@@ -139,6 +146,9 @@ case $1 in
 	;;
     memcheck)
 	memcheck
+	;;
+    hourly)
+	hourly
 	;;
     shell)
         shell
