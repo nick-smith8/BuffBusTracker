@@ -1,4 +1,4 @@
-var margin = {top: 20, right: 20, bottom: 60, left: 70},
+var margin = {top: 50, right: 20, bottom: 60, left: 70},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
@@ -33,7 +33,7 @@ var svg = d3.select('body').append('svg')
 
 svg.call(tip);
 
-d3.tsv('data.tsv', type, function(error, data) {
+d3.tsv('data/data.tsv', type, function(error, data) {
   if (error) throw error;
 
   x.domain(data.map(function(d) { return d.Date; }));
