@@ -58,7 +58,7 @@ daily() {
 hourly() {
 	echo -e "Date\tRequests"
 	#docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk '{print $2,$3":00\011" $1}'
-	docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk '{if(day != $2 && length($2) != 0) {print day,total; total=0; day=$2}; total = total + $1; print "\t"$3":00\t" $1,RN;} END { print $2,total; }'
+	docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk 'BEGIN {total=-1} { if(day != $2 && length($2) != 0) { if(total != -1){print "t" day"\t"total;} total=0; day=$2}; total = total + $1; print "h"$3"\011"$1,RN;} END { print "t" $2"\t"total; }'
 
 }
 

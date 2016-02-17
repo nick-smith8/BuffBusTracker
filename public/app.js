@@ -36,9 +36,20 @@ svg.call(tip);
 d3.tsv('data/data.tsv', type, function(error, data) {
   if (error) throw error;
 
-  x.domain(data.map(function(d) { return d.Date; }));
-  y.domain([0, d3.max(data, function(d) { return d.Requests; })]);
+data = data.filter(function(point) {
+	return point.Date[0] === 't';
+});
 
+data = data.map(function(point) {
+	point.Date = point.Date.substr(1);
+	return point;
+});
+
+x.domain(data.map(function(d) {
+	return d.Date;
+ }));
+	
+  y.domain([0, d3.max(data, function(d) { return d.Requests; })]);
   svg.append('g')
       .attr('class', 'x axis')
       .attr('transform', 'translate(0,' + height + ')')
@@ -63,12 +74,19 @@ d3.tsv('data/data.tsv', type, function(error, data) {
       .data(data)
     .enter().append('rect')
       .attr('class', 'bar')
-      .attr('x', function(d) { return x(d.Date); })
+      .attr('x', function(d) {
+	 	return x(d.Date);
+	 })
       .attr('width', x.rangeBand())
-      .attr('y', function(d) { return y(d.Requests); })
-      .attr('height', function(d) { return height - y(d.Requests); })
+      .attr('y', function(d) {
+			return y(d.Requests);
+		
+	 })
+      .attr('height', function(d) {return height - y(d.Requests)})
       .on('mouseover', tip.show)
       .on('mouseout', tip.hide)
+      .on('click',tip.hide)
+
 });
 
 function type(d) {
