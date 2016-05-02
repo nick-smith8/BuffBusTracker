@@ -10,7 +10,8 @@ var y = d3.scale.linear()
 
 var xAxis = d3.svg.axis()
     .scale(x)
-    .orient('bottom');
+    .orient('bottom')
+    .tickFormat(xFormat);
 
 var yAxis = d3.svg.axis()
     .scale(y)
@@ -21,7 +22,7 @@ var tip = d3.tip()
   .attr('class', 'd3-tip')
   .offset([-10, 0])
   .html(function(d) {
-    return "<strong>Requests:</strong> <span style='color:red'>" + d.Requests + "</span>";
+    return "<strong>Date:</strong> <span style='color:red'>" + d.Date + "</span><br><strong>Requests:</strong> <span style='color:red'>" + d.Requests + "</span>";
   })
 
 
@@ -48,7 +49,7 @@ data = data.map(function(point) {
 x.domain(data.map(function(d) {
 	return d.Date;
  }));
-	
+
   y.domain([0, d3.max(data, function(d) { return d.Requests; })]);
   svg.append('g')
       .attr('class', 'x axis')
@@ -92,4 +93,10 @@ x.domain(data.map(function(d) {
 function type(d) {
   d.Requests = + d.Requests;
   return d;
+}
+function xFormat(d,index) {
+if (index % 7 == 0){
+	return d;
+}
+return '';
 }
