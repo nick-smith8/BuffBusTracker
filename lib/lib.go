@@ -52,6 +52,7 @@ type Stops struct {
 
 type Vehicles struct {
 	GetVehicles []struct {
+		Patternid          int         `json:"patternID"`
 		Equipmentid        string      `json:"equipmentID"`
 		Lat                float64     `json:"lat"`
 		Lng                float64     `json:"lng"`
@@ -232,6 +233,9 @@ func (c Client) httpCall() ([]byte, error) {
 // Creates the final json to be served by the server
 func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error) {
 
+	clockwiseStops := []int{33087,12665,33076,33077,33078,25124,25126,25127,33079,33080,33081,33082,33084,33085,33086,25173,25174,19779,19780,19781,33129,23924,10843,33130,34597}
+	counterclockwiseStops := []int{16632,25132,25303,33132,33133,33134,33135,33137,33138,33814,25940,13044,33139,33140,33141,12672,24356,34600,34601}
+	
 	var nextBusTimesStart []int
 	var announcementString []string
 
@@ -256,7 +260,10 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 		routeInfo.SetRouteInfo(route.ID, route.Name, stopToInt)
 		routeCollection = append(routeCollection, routeInfo)
 	}
-
+	routeInfo.SetRouteInfo(6, "HOP Clockwise", clockwiseStops)
+	routeCollection = append(routeCollection, routeInfo)
+	routeInfo.SetRouteInfo(7, "HOP CounterClockwise", counterclockwiseStops)
+	routeCollection = append(routeCollection, routeInfo)
 	//NEED to optomize this....  :(
 	for _, stop := range fc.Stops.GetStops {
 		mapIt := map[string][]int{}
@@ -295,9 +302,19 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 	}
 
 	for _, bus := range fc.Buses.GetVehicles {
+		
 		if bus.Routeid != 777 && bus.Inservice != 0 {
-		busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng,)
-		busCollection = append(busCollection, busInfo)
+			if bus.Patternid == 12 ||bus.Patternid == 13 ||bus.Patternid == 15 ||bus.Patternid == 16{
+				busInfo.SetBusInfo(6, bus.Lat, bus.Lng,)
+				busCollection = append(busCollection, busInfo)
+			} else if bus.Patternid == 14 ||bus.Patternid == 17 ||bus.Patternid == 18 ||bus.Patternid == 19{
+				busInfo.SetBusInfo(7, bus.Lat, bus.Lng,)
+				busCollection = append(busCollection, busInfo)
+			}else{
+				busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng,)
+				busCollection = append(busCollection, busInfo)
+			}
+		
 		}
 	}
 
