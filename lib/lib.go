@@ -66,7 +66,7 @@ type Vehicles struct {
 		Receivetime int64       `json:"receiveTime"`
 	} `json:"get_vehicles"`
 }
-	
+
 type Announcements struct {
 	GetServiceAnnouncements []struct {
 		Type string `json:"type"`
@@ -157,7 +157,7 @@ func CreateFinalCreator() FinalCreator {
 	if err != nil {
 		log.Println(err)
 	}
-	
+
 	client2 := Client{Url: BUSES_URL}
 	busesBody, err1 := client2.httpCall()
 	if err1 != nil {
@@ -191,14 +191,14 @@ func CreateFinalCreator() FinalCreator {
 	if announcementerror != nil {
 
 	}
-	
+
 	return FinalCreator{Routes: routes, Stops: stops, Buses: buses,Announcements:announcements}
 }
 
 // Makes the call to ETA and returns the byte slice of json
 func (c Client) httpCall() ([]byte, error) {
 	//log.Println("Making call to: ", c.Url)
-	
+
 	req, err := http.NewRequest("GET", c.Url, nil)
 	if err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 
 	clockwiseStops := []int{33087,12665,33076,33077,33078,25124,25126,25127,33079,33080,33081,33082,33084,33085,33086,25173,25174,19779,19780,19781,33129,23924,10843,33130,34597}
 	counterclockwiseStops := []int{16632,25132,25303,33132,33133,33134,33135,33137,33138,33814,25940,13044,33139,33140,33141,12672,24356,34600,34601}
-	
+
 	var nextBusTimesStart []int
 	var announcementString []string
 
@@ -246,9 +246,9 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 	busInfo := BusInfo{}
 	stopInfo := StopInfo{}
 	routeInfo := RouteInfo{}
-	
+
 	for _, route := range fc.Routes.GetRoutes {
-		
+
 		var stopToInt []int
 		for _, stop := range route.Stops {
 			//stopAsInt, _ := strconv.Atoi(stop)
@@ -301,12 +301,20 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 
 		if !strings.EqualFold(stop.Name, "30th and Colorado E Bound") && !strings.EqualFold(stop.Name, "30th and Colorado WB") {
 			stopInfo.SetStopInfo(stop.ID, stop.Name, mapIt, stop.Lat, stop.Lng)
-			stopCollection = append(stopCollection, stopInfo)
+			isDuplicate := 0
+			for _, v := range stopCollection {
+    		 	if v.ID == stopInfo.ID {
+						isDuplicate = 1
+    		}
+			}
+			if isDuplicate == 0 {
+				stopCollection = append(stopCollection, stopInfo)
+			}
 		}
 	}
 
 	for _, bus := range fc.Buses.GetVehicles {
-		
+
 		if bus.Routeid != 777 && bus.Inservice != 0 {
 			if bus.Patternid == 12 ||bus.Patternid == 13 ||bus.Patternid == 15 ||bus.Patternid == 16{
 				busInfo.SetBusInfo(6, bus.Lat, bus.Lng,)
@@ -318,7 +326,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 				busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng,)
 				busCollection = append(busCollection, busInfo)
 			}
-		
+
 		}
 	}
 
