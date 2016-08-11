@@ -261,11 +261,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 	for _, stop := range fc.Stops.GetStops {
 		mapIt := map[string][]int{}
 		for _, bus := range fc.Buses.GetVehicles {
-			if bus.Patternid == 12 ||bus.Patternid == 13 ||bus.Patternid == 15 ||bus.Patternid == 16{
-				bus.Routeid = 6;
-			} else if bus.Patternid == 14 ||bus.Patternid == 17 ||bus.Patternid == 18 ||bus.Patternid == 19{
-				bus.Routeid = 7;
-			}
+
 			if len(bus.Minutestonextstops) != 0 {
 				for _, minute := range bus.Minutestonextstops {
 					str := strconv.Itoa(bus.Routeid)
