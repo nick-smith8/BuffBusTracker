@@ -11,3 +11,8 @@ Server that pulls from eta api, formats the data to the JSON needed by our IOS/A
 
 ```
 
+  TODO:
+  * Clean-up code
+  * Integrate RTD stuff, Stampede route
+  * Add persistent logging for public site(docker volumes)
+  * Add a way to notify by email when the server fails (bash script + docker logging?)
