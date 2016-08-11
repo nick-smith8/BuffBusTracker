@@ -12,9 +12,9 @@ import (
 
 const (
 	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements"
-	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes"
-	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops"
-	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
+	ROUTES_URL        = "http://buffbus.etaspot.net/service.php?service=get_routes"
+	STOPS_URL         = "http://buffbus.etaspot.net/service.php?service=get_stops"
+	BUSES_URL         = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
 )
 
 // Test data for if server is down
@@ -27,9 +27,9 @@ var (
 // Struct definitions for the json coming in from ETA
 type Routes struct {
 	GetRoutes []struct {
-		ID    int                 `json:"id"`
-		Name  string              `json:"name"`
-		Stops []int               `json:"stops"`
+		ID                 int    `json:"id"`
+		Name               string `json:"name"`
+		Stops              []int  `json:"stops"`
 		Color              string `json:"color"`
 		EncLine            string `json:"encLine"`
 		Order              int    `json:"order"`
@@ -68,7 +68,7 @@ type Vehicles struct {
 
 type Announcements struct {
 	GetServiceAnnouncements []struct {
-		Type string `json:"type"`
+		Type          string `json:"type"`
 		Announcements []struct {
 			End   string `json:"end"`
 			Start string `json:"start"`
@@ -79,13 +79,13 @@ type Announcements struct {
 
 type Minutestonextstops struct {
 	StopID  string `json:"stopID"`
-	Minutes int `json:"minutes"`
+	Minutes int    `json:"minutes"`
 }
 
 type BusInfo struct {
-	Routeid     int         `json:"routeID"`
-	Lat         float64     `json:"lat"`
-	Lng         float64     `json:"lng"`
+	Routeid int     `json:"routeID"`
+	Lat     float64 `json:"lat"`
+	Lng     float64 `json:"lng"`
 }
 type StopInfo struct {
 	ID                int              `json:"id"`
@@ -108,9 +108,9 @@ type FinalPackage struct {
 	RouteInfo []RouteInfo
 }
 type FinalCreator struct {
-	Routes Routes
-	Stops  Stops
-	Buses  Vehicles
+	Routes        Routes
+	Stops         Stops
+	Buses         Vehicles
 	Announcements Announcements
 }
 type Client struct {
@@ -175,11 +175,11 @@ func CreateFinalCreator() FinalCreator {
 
 	error := json.Unmarshal(routesBody, &routes)
 	if error != nil {
-		 //log.Println(error)
+		//log.Println(error)
 	}
 	stoperror := json.Unmarshal(stopsBody, &stops)
 	if stoperror != nil {
-		 //log.Println(stoperror)
+		//log.Println(stoperror)
 	}
 
 	buserror := json.Unmarshal(busesBody, &buses)
@@ -191,7 +191,7 @@ func CreateFinalCreator() FinalCreator {
 
 	}
 
-	return FinalCreator{Routes: routes, Stops: stops, Buses: buses,Announcements:announcements}
+	return FinalCreator{Routes: routes, Stops: stops, Buses: buses, Announcements: announcements}
 }
 
 // Makes the call to ETA and returns the byte slice of json
@@ -222,10 +222,10 @@ func (c Client) httpCall() ([]byte, error) {
 		return nil, err1
 	}
 	/*
-	if (c.Url == "http://buffbus.etaspot.net/service.php?service=get_routes"){
-		log.Println(string(body));
-	}
-*/
+		if (c.Url == "http://buffbus.etaspot.net/service.php?service=get_routes"){
+			log.Println(string(body));
+		}
+	*/
 	return body, nil
 }
 
@@ -250,7 +250,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 			//stopAsInt, _ := strconv.Atoi(stop)
 			stopToInt = append(stopToInt, stop)
 		}
-		if strings.EqualFold(route.Name,"Will Vill - Brown Line"){
+		if strings.EqualFold(route.Name, "Will Vill - Brown Line") {
 			route.Name = "Buff Bus"
 		}
 		routeInfo.SetRouteInfo(route.ID, route.Name, stopToInt)
@@ -281,7 +281,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 		for k := range mapIt {
 			sort.Ints(mapIt[k])
 		}
-		if strings.EqualFold(stop.Name, "Discovery Learning Center") || strings.EqualFold(stop.Name, "Public Safety"){
+		if strings.EqualFold(stop.Name, "Discovery Learning Center") || strings.EqualFold(stop.Name, "Public Safety") {
 			stop.Name = "Engineering Center"
 		}
 		if strings.EqualFold(stop.Name, "Euclid") {
@@ -292,9 +292,9 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 			stopInfo.SetStopInfo(stop.ID, stop.Name, mapIt, stop.Lat, stop.Lng)
 			isDuplicate := 0
 			for _, v := range stopCollection {
-    		 	if v.ID == stopInfo.ID {
-						isDuplicate = 1
-    		}
+				if v.ID == stopInfo.ID {
+					isDuplicate = 1
+				}
 			}
 			if isDuplicate == 0 {
 				stopCollection = append(stopCollection, stopInfo)
@@ -304,15 +304,15 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 
 	for _, bus := range fc.Buses.GetVehicles {
 		if bus.Routeid != 777 && bus.Inservice != 0 {
-		busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng,)
-		busCollection = append(busCollection, busInfo)
+			busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng)
+			busCollection = append(busCollection, busInfo)
 		}
 	}
 
 	for _, announcement := range fc.Announcements.GetServiceAnnouncements {
-		for _,message := range announcement.Announcements {
+		for _, message := range announcement.Announcements {
 			if message.Text != "" {
-				announcementString = append(announcementString,message.Text)
+				announcementString = append(announcementString, message.Text)
 			}
 		}
 	}
@@ -339,5 +339,5 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 		log.Println("Error marshalling the JSOM for the Audit", err)
 	}
 
-	return busJson, stopJson, routeJson,announcementJson, nil
+	return busJson, stopJson, routeJson, announcementJson, nil
 }

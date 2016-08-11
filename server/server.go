@@ -5,8 +5,8 @@ import (
 	"BuffBusTracker/lib"
 	"log"
 	"net/http"
-	"time"
 	"strings"
+	"time"
 )
 
 const (
@@ -16,10 +16,10 @@ const (
 )
 
 var (
-	JsonToSend      []byte
-	BusJsonToSend   []byte
-	StopJsonToSend  []byte
-	RouteJsonToSend []byte
+	JsonToSend             []byte
+	BusJsonToSend          []byte
+	StopJsonToSend         []byte
+	RouteJsonToSend        []byte
 	AnnouncementJsonToSend []byte
 )
 
@@ -28,18 +28,18 @@ type myHandler struct{}
 func analyticsRequest(s string, i string) {
 
 	// Strip off the ip of the client and send it with the analytics
-	resp, err := http.Get("http://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-68940534-1&cid=555&dh=cherishapps.me&dp=%2F" + s + "&uip=" + strings.Split(i,":")[0])
+	resp, err := http.Get("http://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-68940534-1&cid=555&dh=cherishapps.me&dp=%2F" + s + "&uip=" + strings.Split(i, ":")[0])
 	if err != nil {
 		log.Println(err)
-	}	
-	defer	resp.Body.Close()
+	}
+	defer resp.Body.Close()
 }
 
 // Define the different functions to handle the routes
 func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(BusJsonToSend)	
+	w.Write(BusJsonToSend)
 }
 func stophandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -60,8 +60,9 @@ func announcementhandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(AnnouncementJsonToSend)
 }
 func publichandler(w http.ResponseWriter, r *http.Request) {
-    http.ServeFile(w,r,"./src/BuffBusTracker/"+r.URL.Path)
+	http.ServeFile(w, r, "./src/BuffBusTracker/"+r.URL.Path)
 }
+
 // Sets the global variables to the json that will be sent
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
@@ -76,7 +77,7 @@ func SetJson() {
 		BusJsonToSend = BusJson
 		StopJsonToSend = StopJson
 		RouteJsonToSend = RouteJson
-		AnnouncementJsonToSend = AnnouncementJson 
+		AnnouncementJsonToSend = AnnouncementJson
 		<-time.After(10 * time.Second)
 		//t2 := time.Now()
 	}
@@ -86,7 +87,7 @@ func init() {
 	http.HandleFunc("/buses", bushandler)
 	http.HandleFunc("/stops", stophandler)
 	http.HandleFunc("/routes", routehandler)
-	http.HandleFunc("/announcements",announcementhandler)
+	http.HandleFunc("/announcements", announcementhandler)
 	http.HandleFunc("/public/", publichandler)
 }
 
