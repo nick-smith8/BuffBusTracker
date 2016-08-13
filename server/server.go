@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"buffbus/lib"
 	"BuffBusTracker/lib"
 	"log"
 	"net/http"
@@ -10,9 +9,11 @@ import (
 )
 
 const (
-	ROUTES_URL = "http://buffbus.etaspot.net/service.php?service=get_routes"
-	STOPS_URL  = "http://buffbus.etaspot.net/service.php?service=get_stops"
-	BUSES_URL  = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
+	ROUTES_URL   = "http://buffbus.etaspot.net/service.php?service=get_routes"
+	STOPS_URL    = "http://buffbus.etaspot.net/service.php?service=get_stops"
+	BUSES_URL    = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
+	PORT         = "8080"
+	REQ_INTERVAL = 10
 )
 
 var (
@@ -23,10 +24,7 @@ var (
 	AnnouncementJsonToSend []byte
 )
 
-type myHandler struct{}
-
 func analyticsRequest(s string, i string) {
-
 	// Strip off the ip of the client and send it with the analytics
 	resp, err := http.Get("http://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-68940534-1&cid=555&dh=cherishapps.me&dp=%2F" + s + "&uip=" + strings.Split(i, ":")[0])
 	if err != nil {
@@ -35,30 +33,33 @@ func analyticsRequest(s string, i string) {
 	defer resp.Body.Close()
 }
 
-// Define the different functions to handle the routes
+/* Define the different functions to handle the routes */
 func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(BusJsonToSend)
 }
+
 func stophandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(StopJsonToSend)
 	log.Println(r.RemoteAddr)
 	//go analyticsRequest("stops",r.RemoteAddr)
-
 }
+
 func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(RouteJsonToSend)
 }
+
 func announcementhandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(AnnouncementJsonToSend)
 }
+
 func publichandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "./src/BuffBusTracker/"+r.URL.Path)
 }
@@ -67,6 +68,7 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
 	for {
+		log.Println("Running")
 		//t := time.Now()
 		FinalCreator := lib.CreateFinalCreator()
 		//t1 := time.Now()
@@ -78,11 +80,11 @@ func SetJson() {
 		StopJsonToSend = StopJson
 		RouteJsonToSend = RouteJson
 		AnnouncementJsonToSend = AnnouncementJson
-		<-time.After(10 * time.Second)
-		//t2 := time.Now()
+		<-time.After(REQ_INTERVAL * time.Second)
 	}
 }
 
+/* Setup HTTP handlers oncreate */
 func init() {
 	http.HandleFunc("/buses", bushandler)
 	http.HandleFunc("/stops", stophandler)
@@ -95,6 +97,6 @@ func main() {
 	// Create a go routine for this so it will run concurrently with the server
 	go SetJson()
 
-	// Listen on port 8080 and fail if anything bad happens
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Listen on specified port and fail if anything bad happens
+	log.Fatal(http.ListenAndServe(":"+PORT, nil))
 }
