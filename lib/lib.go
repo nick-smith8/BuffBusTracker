@@ -106,12 +106,20 @@ type AnnouncementInfo struct {
 	Announcements []string `json:"announcements"`
 }
 
-/* Organized collection of parsed structs */
+/* Collection of parsed structs from clients */
 type ParsedObjects struct {
 	Routes        Routes
 	Stops         Stops
 	Buses         Buses
 	Announcements Announcements
+}
+
+/* Collection of modified structs to be sent by the server */
+type FinalJSONs struct {
+	Routes        []byte
+	Stops         []byte
+	Buses         []byte
+	Announcements []byte
 }
 
 /* Represents a source of information */
@@ -211,7 +219,7 @@ func CreateParsedObjects() ParsedObjects {
 }
 
 /* Creates the final json to be served by the server */
-func (objs ParsedObjects) CreateFinalJson() ([]byte, []byte, []byte, []byte, error) {
+func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 	var nextBusTimesStart []int
 	var announcementString []string
 
@@ -222,6 +230,9 @@ func (objs ParsedObjects) CreateFinalJson() ([]byte, []byte, []byte, []byte, err
 	routeInfo := RouteInfo{}
 	stopInfo := StopInfo{}
 	busInfo := BusInfo{}
+
+  JSONs := FinalJSONs{}
+  var err error
 
 	for _, route := range objs.Routes.GetRoutes {
 
@@ -299,25 +310,28 @@ func (objs ParsedObjects) CreateFinalJson() ([]byte, []byte, []byte, []byte, err
 
 	announcementInfo := AnnouncementInfo{Announcements: announcementString}
 
-	busJson, err := json.Marshal(busCollection)
+  JSONs.Routes, err = json.Marshal(routeCollection)
 	if err != nil {
 		log.Println("Error Marshalling the JSON for the Audit", err)
 		//return nil, nil, nil, err
 	}
-	stopJson, err := json.Marshal(stopCollection)
+
+	JSONs.Stops, err = json.Marshal(stopCollection)
 	if err != nil {
 		log.Println("Error Marshalling the JSON for the Audit", err)
 		//return nil, nil, nil, err
 	}
-	routeJson, err := json.Marshal(routeCollection)
-	if err != nil {
-		log.Println("Error Marshalling the JSON for the Audit", err)
-		//return nil, nil, nil, err
-	}
-	announcementJson, err := json.Marshal(announcementInfo)
+
+  JSONs.Buses, err = json.Marshal(busCollection)
+  if err != nil {
+    log.Println("Error Marshalling the JSON for the Audit", err)
+    //return nil, nil, nil, err
+  }
+
+	JSONs.Announcements, err = json.Marshal(announcementInfo)
 	if err != nil {
 		log.Println("Error marshalling the JSOM for the Audit", err)
 	}
 
-	return busJson, stopJson, routeJson, announcementJson, nil
+	return JSONs, err
 }

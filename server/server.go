@@ -18,9 +18,9 @@ const (
 
 var (
 	JsonToSend             []byte
+  RouteJsonToSend        []byte
+  StopJsonToSend         []byte
 	BusJsonToSend          []byte
-	StopJsonToSend         []byte
-	RouteJsonToSend        []byte
 	AnnouncementJsonToSend []byte
 )
 
@@ -34,10 +34,10 @@ func analyticsRequest(s string, i string) {
 }
 
 /* Define the different functions to handle the routes */
-func bushandler(w http.ResponseWriter, r *http.Request) {
+func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(BusJsonToSend)
+	w.Write(RouteJsonToSend)
 }
 
 func stophandler(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +48,10 @@ func stophandler(w http.ResponseWriter, r *http.Request) {
 	//go analyticsRequest("stops",r.RemoteAddr)
 }
 
-func routehandler(w http.ResponseWriter, r *http.Request) {
+func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(RouteJsonToSend)
+	w.Write(BusJsonToSend)
 }
 
 func announcementhandler(w http.ResponseWriter, r *http.Request) {
@@ -70,14 +70,15 @@ func SetJson() {
 	for {
 		StartTime := time.Now()
 		Creator := lib.CreateParsedObjects()
-		BusJson, StopJson, RouteJson, AnnouncementJson, err := Creator.CreateFinalJson()
+    FinalObjects, err := Creator.CreateFinalJson()
+		//BusJson, StopJson, RouteJson, AnnouncementJson, err := Creator.CreateFinalJson()
 		if err != nil {
 			// panic(err)
 		}
-		BusJsonToSend = BusJson
-		StopJsonToSend = StopJson
-		RouteJsonToSend = RouteJson
-		AnnouncementJsonToSend = AnnouncementJson
+    RouteJsonToSend = FinalObjects.Routes
+    StopJsonToSend = FinalObjects.Stops
+		BusJsonToSend = FinalObjects.Buses
+		AnnouncementJsonToSend = FinalObjects.Announcements
 
 		TimeElapsed := time.Since(StartTime)
 		// Sleep remaining time
