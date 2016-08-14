@@ -69,8 +69,8 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 func SetJson() {
 	for {
 		StartTime := time.Now()
-		FinalCreator := lib.CreateFinalCreator()
-		BusJson, StopJson, RouteJson, AnnouncementJson, err := FinalCreator.CreateFinalJson()
+		Creator := lib.CreateParsedObjects()
+		BusJson, StopJson, RouteJson, AnnouncementJson, err := Creator.CreateFinalJson()
 		if err != nil {
 			// panic(err)
 		}

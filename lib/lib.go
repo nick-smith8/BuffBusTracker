@@ -106,8 +106,8 @@ type AnnouncementInfo struct {
 	Announcements []string `json:"announcements"`
 }
 
-/* Organized collection of final structs */
-type FinalCreator struct {
+/* Organized collection of parsed structs */
+type ParsedObjects struct {
 	Routes        Routes
 	Stops         Stops
 	Buses         Buses
@@ -178,8 +178,8 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateFinalCreator() FinalCreator {
-	creator := FinalCreator{
+func CreateParsedObjects() ParsedObjects {
+	creator := ParsedObjects{
 		Routes:        Routes{},
 		Stops:         Stops{},
 		Buses:         Buses{},
@@ -211,8 +211,7 @@ func CreateFinalCreator() FinalCreator {
 }
 
 /* Creates the final json to be served by the server */
-func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error) {
-
+func (objs ParsedObjects) CreateFinalJson() ([]byte, []byte, []byte, []byte, error) {
 	var nextBusTimesStart []int
 	var announcementString []string
 
@@ -224,7 +223,7 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 	stopInfo := StopInfo{}
 	busInfo := BusInfo{}
 
-	for _, route := range fc.Routes.GetRoutes {
+	for _, route := range objs.Routes.GetRoutes {
 
 		var stopToInt []int
 		for _, stop := range route.Stops {
@@ -239,9 +238,9 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 	}
 
 	//NEED to optomize this....  :(
-	for _, stop := range fc.Stops.GetStops {
+	for _, stop := range objs.Stops.GetStops {
 		mapIt := map[string][]int{}
-		for _, bus := range fc.Buses.GetVehicles {
+		for _, bus := range objs.Buses.GetVehicles {
 
 			if len(bus.Minutestonextstops) != 0 {
 				for _, minute := range bus.Minutestonextstops {
@@ -283,14 +282,14 @@ func (fc FinalCreator) CreateFinalJson() ([]byte, []byte, []byte, []byte, error)
 		}
 	}
 
-	for _, bus := range fc.Buses.GetVehicles {
+	for _, bus := range objs.Buses.GetVehicles {
 		if bus.Routeid != 777 && bus.Inservice != 0 {
 			busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng)
 			busCollection = append(busCollection, busInfo)
 		}
 	}
 
-	for _, announcement := range fc.Announcements.GetServiceAnnouncements {
+	for _, announcement := range objs.Announcements.GetServiceAnnouncements {
 		for _, message := range announcement.Announcements {
 			if message.Text != "" {
 				announcementString = append(announcementString, message.Text)
