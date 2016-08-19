@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
+	pb "BuffBusTracker/lib/proto"
 )
 
 const (
@@ -15,6 +18,7 @@ const (
 	STOPS_URL         = "http://buffbus.etaspot.net/service.php?service=get_stops"
 	BUSES_URL         = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
 	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements"
+	RTD_ROUTES_URL    = "http://www.rtd-denver.com/google_sync/TripUpdate.pb"
 	USER_AGENT        = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.1.25 (KHTML, like Gecko) Version/8.0 Safari/600.1.25"
 )
 
@@ -117,7 +121,7 @@ type ParsedObjects struct {
 	ETA_Stops         ETA_Stops
 	ETA_Buses         ETA_Buses
 	ETA_Announcements ETA_Announcements
-	RTD_ROUTES        RTD_Routes
+	RTD_Routes        RTD_Routes
 }
 
 /* Collection of modified structs to be sent by the server */
@@ -130,7 +134,13 @@ type FinalJSONs struct {
 
 /* Represents a source of information */
 type Client struct {
-	Url string
+	Url  string
+	Type string
+	Auth
+}
+type Auth struct {
+	Username string
+	Password string
 }
 
 /* Maintain association between Clients and structs to hold parsed response */
@@ -170,6 +180,11 @@ func (c Client) httpCall() ([]byte, error) {
 	}
 	req.Header.Set("User-Agent", USER_AGENT)
 
+	// If auth is set
+	if (Auth{}) != c.Auth {
+		req.SetBasicAuth(c.Auth.Username, c.Auth.Password)
+	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -199,29 +214,79 @@ func CreateParsedObjects() ParsedObjects {
 		ETA_Buses:         ETA_Buses{},
 		ETA_Announcements: ETA_Announcements{},
 	}
+	creator.RTD_Routes = RTD_Routes{}
 
-	requests := [...]Request{
-		{Client{ROUTES_URL}, &creator.ETA_Routes},
-		{Client{STOPS_URL}, &creator.ETA_Stops},
-		{Client{BUSES_URL}, &creator.ETA_Buses},
-		{Client{ANNOUNCEMENTS_URL}, &creator.ETA_Announcements},
+	requests := []Request{
+		{Client{Url: ROUTES_URL, Type: "json"}, &creator.ETA_Routes},
+		{Client{Url: STOPS_URL, Type: "json"}, &creator.ETA_Stops},
+		{Client{Url: BUSES_URL, Type: "json"}, &creator.ETA_Buses},
+		{Client{Url: ANNOUNCEMENTS_URL, Type: "json"}, &creator.ETA_Announcements},
 	}
 
+	// Add RTD request
+	r := Request{
+		Client{
+			Url:  RTD_ROUTES_URL,
+			Type: "proto",
+			Auth: Auth{Username: "RTDgtfsRT", Password: "realT!m3Feed"},
+		}, &creator.RTD_Routes,
+	}
+	requests = append(requests, r)
+
 	for _, request := range requests {
-		client := Client{request.Client.Url}
-		clientResp, err := client.httpCall()
+		clientResp, err := request.Client.httpCall()
 		if err != nil {
 			log.Println(err)
 		}
 
-		// Parse JSON response
-		err = json.Unmarshal(clientResp, request.Structure)
+		//Parse JSON response
+		log.Println("Parsing: ", request.Client.Url)
+		if request.Type == "json" {
+			err = json.Unmarshal(clientResp, request.Structure)
+		} else if request.Type == "proto" {
+			fm := new(pb.FeedMessage)
+			//err := proto.Unmarshal(clientResp, fm)
+			//err = proto.Unmarshal(clientResp, request.Structure)
+			err := proto.Unmarshal(clientResp, fm)
+
+			var vehicles []Vehicle
+			for _, entity := range fm.GetEntity() {
+        //TODO fix
+        //https://gist.github.com/scascketta/89ba9339496ab1ed44b7
+        //https://github.com/golang/protobuf/blob/master/proto/any_test.go
+				//var vehPos *VehiclePosition = entity.GetVehicle()
+				//var trip *TripDescriptor = vehPos.GetTrip()
+				//var pos *Position = vehPos.GetPosition()
+
+				veh := Vehicle{
+					VehicleID: vehPos.GetVehicle().GetId(),
+					Time:      vehPos.GetTimestamp(),
+					Speed:     pos.GetSpeed(),
+					Route:     trip.GetRouteId(),
+					Trip:      trip.GetTripId(),
+					Latitude:  pos.GetLatitude(),
+					Longitude: pos.GetLongitude(),
+				}
+				vehicles = append(vehicles, veh)
+			}
+		}
+
 		if err != nil {
 			log.Println(err)
 		}
 
 	}
 	return creator
+}
+
+type Vehicle struct {
+	VehicleID string
+	Time      uint64
+	Speed     float32
+	Route     string
+	Trip      string
+	Latitude  float32
+	Longitude float32
 }
 
 /* Creates the final json to be served by the server */

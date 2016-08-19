@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	ROUTES_URL   = "http://buffbus.etaspot.net/service.php?service=get_routes"
-	STOPS_URL    = "http://buffbus.etaspot.net/service.php?service=get_stops"
-	BUSES_URL    = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
-	PORT         = "8080"
-	REQ_INTERVAL = 10
+	ROUTES_URL     = "http://buffbus.etaspot.net/service.php?service=get_routes"
+	STOPS_URL      = "http://buffbus.etaspot.net/service.php?service=get_stops"
+	BUSES_URL      = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
+	RTD_ROUTES_URL = "http://www.rtd-denver.com/google_sync/TripUpdate.pb"
+	PORT           = "8080"
+	REQ_INTERVAL   = 10
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 
 type Config struct {
 	Username  string
-	Passwords []string
+	Password string
 }
 
 func analyticsRequest(s string, i string) {
@@ -118,7 +119,7 @@ func init() {
 	http.HandleFunc("/public/", publichandler)
 
 	var conf = ReadConfig()
-	log.Print(conf.Passwords[0])
+	log.Print(conf.Password)
 }
 
 func main() {
