@@ -79,15 +79,15 @@ memcheck(){
 # Cleanly start container
 start() {
     echo -e "Starting $CONTAINER_NAME...\n"
-    if ! `docker images | grep -q $IMAGE_NAME`; then
+    #if ! `docker images | grep -q $IMAGE_NAME`; then
         build
-    fi
+    #fi
     if `docker ps | grep -q $CONTAINER_NAME`; then
         stop
     fi
+    #-v `pwd`:/go/src/BuffBusTracker/ \
     docker run \
    	 --name $CONTAINER_NAME -h $CONTAINER_NAME \
-        -v `pwd`:/go/src/BuffBusTracker/ \
 	--restart=always \
         -p 8080:8080 \
         -d -t $IMAGE_NAME
