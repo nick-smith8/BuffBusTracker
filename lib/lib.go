@@ -26,7 +26,7 @@ var (
 )
 
 /* Struct definitions for the json coming in from ETA */
-type Routes struct {
+type ETA_Routes struct {
 	GetRoutes []struct {
 		ID                 int    `json:"id"`
 		Name               string `json:"name"`
@@ -42,7 +42,7 @@ type Routes struct {
 	} `json:"get_routes"`
 }
 
-type Stops struct {
+type ETA_Stops struct {
 	GetStops []struct {
 		ID   int     `json:"id"`
 		Name string  `json:"name"`
@@ -51,7 +51,7 @@ type Stops struct {
 	} `json:"get_stops"`
 }
 
-type Buses struct {
+type ETA_Buses struct {
 	GetVehicles []struct {
 		Equipmentid        string      `json:"equipmentID"`
 		Lat                float64     `json:"lat"`
@@ -70,7 +70,7 @@ type Minutestonextstops struct {
 	Minutes int    `json:"minutes"`
 }
 
-type Announcements struct {
+type ETA_Announcements struct {
 	GetServiceAnnouncements []struct {
 		Type          string `json:"type"`
 		Announcements []struct {
@@ -79,6 +79,11 @@ type Announcements struct {
 			Text  string `json:"text"`
 		} `json:"announcements"`
 	} `json:"get_service_announcements"`
+}
+
+type RTD_Routes struct {
+	GetRoutes []struct {
+	}
 }
 
 /* Final structs to be sent out after processing */
@@ -108,10 +113,11 @@ type AnnouncementInfo struct {
 
 /* Collection of parsed structs from clients */
 type ParsedObjects struct {
-	Routes        Routes
-	Stops         Stops
-	Buses         Buses
-	Announcements Announcements
+	ETA_Routes        ETA_Routes
+	ETA_Stops         ETA_Stops
+	ETA_Buses         ETA_Buses
+	ETA_Announcements ETA_Announcements
+	RTD_ROUTES        RTD_Routes
 }
 
 /* Collection of modified structs to be sent by the server */
@@ -188,17 +194,17 @@ func (c Client) httpCall() ([]byte, error) {
 /* Create struct of parsed responses from servers */
 func CreateParsedObjects() ParsedObjects {
 	creator := ParsedObjects{
-		Routes:        Routes{},
-		Stops:         Stops{},
-		Buses:         Buses{},
-		Announcements: Announcements{},
+		ETA_Routes:        ETA_Routes{},
+		ETA_Stops:         ETA_Stops{},
+		ETA_Buses:         ETA_Buses{},
+		ETA_Announcements: ETA_Announcements{},
 	}
 
 	requests := [...]Request{
-		{Client{ROUTES_URL}, &creator.Routes},
-		{Client{STOPS_URL}, &creator.Stops},
-		{Client{BUSES_URL}, &creator.Buses},
-		{Client{ANNOUNCEMENTS_URL}, &creator.Announcements},
+		{Client{ROUTES_URL}, &creator.ETA_Routes},
+		{Client{STOPS_URL}, &creator.ETA_Stops},
+		{Client{BUSES_URL}, &creator.ETA_Buses},
+		{Client{ANNOUNCEMENTS_URL}, &creator.ETA_Announcements},
 	}
 
 	for _, request := range requests {
@@ -231,10 +237,10 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 	stopInfo := StopInfo{}
 	busInfo := BusInfo{}
 
-  JSONs := FinalJSONs{}
-  var err error
+	JSONs := FinalJSONs{}
+	var err error
 
-	for _, route := range objs.Routes.GetRoutes {
+	for _, route := range objs.ETA_Routes.GetRoutes {
 
 		var stopToInt []int
 		for _, stop := range route.Stops {
@@ -249,9 +255,9 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 	}
 
 	//NEED to optomize this....  :(
-	for _, stop := range objs.Stops.GetStops {
+	for _, stop := range objs.ETA_Stops.GetStops {
 		mapIt := map[string][]int{}
-		for _, bus := range objs.Buses.GetVehicles {
+		for _, bus := range objs.ETA_Buses.GetVehicles {
 
 			if len(bus.Minutestonextstops) != 0 {
 				for _, minute := range bus.Minutestonextstops {
@@ -293,14 +299,14 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 		}
 	}
 
-	for _, bus := range objs.Buses.GetVehicles {
+	for _, bus := range objs.ETA_Buses.GetVehicles {
 		if bus.Routeid != 777 && bus.Inservice != 0 {
 			busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng)
 			busCollection = append(busCollection, busInfo)
 		}
 	}
 
-	for _, announcement := range objs.Announcements.GetServiceAnnouncements {
+	for _, announcement := range objs.ETA_Announcements.GetServiceAnnouncements {
 		for _, message := range announcement.Announcements {
 			if message.Text != "" {
 				announcementString = append(announcementString, message.Text)
@@ -310,7 +316,7 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 
 	announcementInfo := AnnouncementInfo{Announcements: announcementString}
 
-  JSONs.Routes, err = json.Marshal(routeCollection)
+	JSONs.Routes, err = json.Marshal(routeCollection)
 	if err != nil {
 		log.Println("Error Marshalling the JSON for the Audit", err)
 		//return nil, nil, nil, err
@@ -322,11 +328,11 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 		//return nil, nil, nil, err
 	}
 
-  JSONs.Buses, err = json.Marshal(busCollection)
-  if err != nil {
-    log.Println("Error Marshalling the JSON for the Audit", err)
-    //return nil, nil, nil, err
-  }
+	JSONs.Buses, err = json.Marshal(busCollection)
+	if err != nil {
+		log.Println("Error Marshalling the JSON for the Audit", err)
+		//return nil, nil, nil, err
+	}
 
 	JSONs.Announcements, err = json.Marshal(announcementInfo)
 	if err != nil {
