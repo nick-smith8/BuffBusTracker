@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+  "os"
+  "encoding/json"
 )
 
 const (
@@ -23,6 +25,11 @@ var (
 	BusJsonToSend          []byte
 	AnnouncementJsonToSend []byte
 )
+
+type Config struct {
+  Username string
+  Passwords []string
+}
 
 func analyticsRequest(s string, i string) {
 	// Strip off the ip of the client and send it with the analytics
@@ -86,6 +93,22 @@ func SetJson() {
 	}
 }
 
+/* Reads info from config file */
+func ReadConfig() Config {
+  configfile := "config.json"
+  file, err := os.Open(configfile)
+  if err != nil {
+    log.Fatal("Config file is missing: ", configfile)
+  }
+  decoder := json.NewDecoder(file)
+  config := Config{}
+  err = decoder.Decode(&config)
+  if err != nil {
+    log.Fatal("Unable to parse config: ", configfile)
+  }
+  return config
+}
+
 /* Setup HTTP handlers oncreate */
 func init() {
 	http.HandleFunc("/buses", bushandler)
@@ -93,6 +116,9 @@ func init() {
 	http.HandleFunc("/routes", routehandler)
 	http.HandleFunc("/announcements", announcementhandler)
 	http.HandleFunc("/public/", publichandler)
+
+  var conf = ReadConfig()
+  log.Print(conf.Passwords[0])
 }
 
 func main() {

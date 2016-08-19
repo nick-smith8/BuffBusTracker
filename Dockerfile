@@ -6,7 +6,7 @@ RUN apt-get -yq dist-upgrade
 RUN echo "America/Denver" > /etc/timezone && dpkg-reconfigure -f noninteractive tzdata
 
 ADD . /go/src/BuffBusTracker/
-WORKDIR /go/
+WORKDIR /go/src/BuffBusTracker
  
 EXPOSE 8080
 
