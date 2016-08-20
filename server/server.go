@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -26,11 +27,6 @@ var (
 	BusJsonToSend          []byte
 	AnnouncementJsonToSend []byte
 )
-
-type Config struct {
-	Username  string
-	Password string
-}
 
 func analyticsRequest(s string, i string) {
 	// Strip off the ip of the client and send it with the analytics
@@ -75,9 +71,10 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 // Sets the global variables to the json that will be sent
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
+	var conf = ReadConfig()
 	for {
 		StartTime := time.Now()
-		Creator := lib.CreateParsedObjects()
+		Creator := lib.CreateParsedObjects(conf)
 		FinalObjects, err := Creator.CreateFinalJson()
 		//BusJson, StopJson, RouteJson, AnnouncementJson, err := Creator.CreateFinalJson()
 		if err != nil {
@@ -95,18 +92,20 @@ func SetJson() {
 }
 
 /* Reads info from config file */
-func ReadConfig() Config {
+func ReadConfig() lib.Config {
 	configfile := "config.json"
 	file, err := os.Open(configfile)
 	if err != nil {
 		log.Fatal("Config file is missing: ", configfile)
 	}
 	decoder := json.NewDecoder(file)
-	config := Config{}
+	config := lib.Config{}
 	err = decoder.Decode(&config)
 	if err != nil {
 		log.Fatal("Unable to parse config: ", configfile)
 	}
+	// Just in case
+	sort.Strings(config.Buses)
 	return config
 }
 
@@ -118,8 +117,6 @@ func init() {
 	http.HandleFunc("/announcements", announcementhandler)
 	http.HandleFunc("/public/", publichandler)
 
-	var conf = ReadConfig()
-	log.Print(conf.Password)
 }
 
 func main() {
