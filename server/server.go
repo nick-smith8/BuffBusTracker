@@ -17,7 +17,7 @@ const (
 	BUSES_URL      = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
 	RTD_ROUTES_URL = "http://www.rtd-denver.com/google_sync/TripUpdate.pb"
 	PORT           = "8080"
-	REQ_INTERVAL   = 10
+	REQ_INTERVAL   = 30
 )
 
 var (
