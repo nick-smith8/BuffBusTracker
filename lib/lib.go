@@ -21,6 +21,7 @@ const (
 	BUSES_URL         = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
 	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements"
 	RTD_ROUTES_URL    = "http://www.rtd-denver.com/google_sync/TripUpdate.pb"
+	RTD_BUSES_URL     = "http://www.rtd-denver.com/google_sync/VehiclePosition.pb"
 	USER_AGENT        = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.1.25 (KHTML, like Gecko) Version/8.0 Safari/600.1.25"
 	RTD_STOPS_FILE    = "RTDstops.txt"
 )
@@ -112,7 +113,7 @@ type StopInfo struct {
 }
 
 type BusInfo struct {
-	Routeid int     `json:"routeID"`
+	RouteID string     `json:"routeID"`
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
 }
@@ -134,7 +135,7 @@ type ParsedObjects struct {
 	ETA_Stops         ETA_Stops
 	ETA_Buses         ETA_Buses
 	ETA_Announcements ETA_Announcements
-	RTD_Routes        FinalObjects
+	RTD               FinalObjects
 }
 
 /* Collection of fully parsed objects from a Client */
@@ -164,10 +165,17 @@ type Auth struct {
 	Password string
 }
 
+type Source struct {
+	Name     string
+	Requests []Request
+	Final    FinalObjects
+}
+
 /* Maintain association between Clients and structs to hold parsed response */
 type Request struct {
 	Client
-	Structure interface{}
+	GenericStructure interface{}
+	ProtoStructure   *pb.FeedMessage
 }
 
 type Caller interface {
@@ -175,8 +183,8 @@ type Caller interface {
 }
 
 // Have some setters because why not :)
-func (bi *BusInfo) SetBusInfo(Routeid int, Lat float64, Lng float64) {
-	bi.Routeid = Routeid
+func (bi *BusInfo) SetBusInfo(RouteID string, Lat float64, Lng float64) {
+	bi.RouteID = RouteID
 	bi.Lat = Lat
 	bi.Lng = Lng
 }
@@ -233,77 +241,114 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateParsedObjects(conf Config) ParsedObjects {
-	creator := ParsedObjects{
-		ETA_Routes:        ETA_Routes{},
-		ETA_Stops:         ETA_Stops{},
-		ETA_Buses:         ETA_Buses{},
-		ETA_Announcements: ETA_Announcements{},
-	}
-	creator.RTD_Routes = FinalObjects{}
+func CreateParsedObjects(conf Config) FinalObjects {
+	Sources := []Source{}
 
-	requests := []Request{
-		{Client{Url: ROUTES_URL, Type: "json"}, &creator.ETA_Routes},
-		{Client{Url: STOPS_URL, Type: "json"}, &creator.ETA_Stops},
-		{Client{Url: BUSES_URL, Type: "json"}, &creator.ETA_Buses},
-		{Client{Url: ANNOUNCEMENTS_URL, Type: "json"}, &creator.ETA_Announcements},
+	// Initialize ETA
+	ETARequests := []Request{
+		{Client: Client{Url: ROUTES_URL, Type: "json"},
+			GenericStructure: ETA_Routes{}},
+		{Client: Client{Url: STOPS_URL, Type: "json"},
+			GenericStructure: ETA_Stops{}},
+		{Client: Client{Url: BUSES_URL, Type: "json"},
+			GenericStructure: ETA_Buses{}},
+		{Client: Client{Url: ANNOUNCEMENTS_URL, Type: "json"},
+			GenericStructure: ETA_Announcements{}},
 	}
+	ETASource := Source{
+		Name:     "ETA",
+		Requests: ETARequests,
+		Final:    FinalObjects{},
+	}
+	Sources = append(Sources, ETASource)
 
-	// Add RTD request
-	r := Request{
-		Client{
+	// Initialize RTD
+	RTDRequests := []Request{
+		{Client: Client{
 			Url:  RTD_ROUTES_URL,
 			Type: "proto",
 			Auth: Auth{Username: conf.Username, Password: conf.Password},
-		}, &creator.RTD_Routes,
+		}, ProtoStructure: &pb.FeedMessage{}},
+		{Client: Client{
+			Url:  RTD_BUSES_URL,
+			Type: "proto",
+			Auth: Auth{Username: conf.Username, Password: conf.Password},
+		}, ProtoStructure: &pb.FeedMessage{}},
 	}
-	requests = append(requests, r)
+	RTDSource := Source{
+		Name:     "RTD",
+		Requests: RTDRequests,
+		Final:    FinalObjects{},
+	}
+	Sources = append(Sources, RTDSource)
 
-	// Send HTTP requests
-	for _, request := range requests {
-		clientResp, err := request.Client.httpCall()
-		if err != nil {
-			log.Println(err)
-		}
+	for _, source := range Sources {
 
-		log.Println("Parsing: ", request.Client.Url)
-		// Parse client responses
-		if request.Type == "json" {
-			err = json.Unmarshal(clientResp, request.Structure)
-		} else if request.Type == "proto" {
-			msg := new(pb.FeedMessage)
-			err = proto.Unmarshal(clientResp, msg)
+		// Send HTTP requests
+		for _, request := range source.Requests {
+			clientResp, err := request.Client.httpCall()
 			if err != nil {
 				log.Println(err)
 			}
-			// Parse objects to
-			request.Structure, _ = ParseRTDObjects(msg, conf)
-			log.Println("Done parsing")
+
+			log.Println("Parsing: ", request.Client.Url)
+
+			// Parse client responses
+			if request.Type == "json" {
+				err = json.Unmarshal(clientResp, &request.GenericStructure)
+			} else if request.Type == "proto" {
+				//a := pb.FeedMessage{}
+				err = proto.Unmarshal(clientResp, request.ProtoStructure)
+			}
+			if err != nil {
+				log.Println(err)
+			}
 		}
+
+		var err error
+		if source.Name == "ETA" {
+			// Process ETA objects
+			//request.Structure, _ = ParseRTDObjects(msg, conf)
+		} else if source.Name == "RTD" {
+			source.Final = ParseRTDObjects(source.Requests, conf)
+		}
+		//log.Println("Done parsing")
 
 		if err != nil {
 			log.Println(err)
 		}
-
 	}
-	return creator
+
+	// Combine FinalObjects
+
+	return Sources[1].Final
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject */
-func ParseRTDObjects(msg *pb.FeedMessage, conf Config) (FinalObjects, error) {
+func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 	Final := FinalObjects{
 		Routes: []RouteInfo{},
 		Stops:  []StopInfo{},
+    Buses:  []BusInfo{},
+	}
+	trips := new(pb.FeedMessage)
+	vehicles := new(pb.FeedMessage)
+
+	// Grab trips and vehicles from request list
+	if requests[0].Client.Url == RTD_ROUTES_URL {
+		trips = requests[0].ProtoStructure
+		vehicles = requests[1].ProtoStructure
+	} else if requests[0].Client.Url == RTD_BUSES_URL {
+		vehicles = requests[0].ProtoStructure
+		trips = requests[1].ProtoStructure
 	}
 
-	// Iterate through every vehicle
-	for _, entity := range msg.GetEntity() {
+	// Iterate through every active vehicle for stops, routes
+	for _, entity := range trips.GetEntity() {
 		trip := entity.GetTripUpdate().GetTrip()
 		times := entity.GetTripUpdate().GetStopTimeUpdate()
 		routeId := trip.GetRouteId()
 		i := sort.SearchStrings(conf.Buses, routeId)
-
-		log.Println(routeId)
 
 		// Only take routes found in the config
 		if i < len(conf.Buses) && conf.Buses[i] == routeId {
@@ -368,14 +413,16 @@ func ParseRTDObjects(msg *pb.FeedMessage, conf Config) (FinalObjects, error) {
 					// Ceiling time estimate for plausible deniability
 					minutesUntil := int((timeUntil + time.Minute) / time.Minute)
 
-					currentStopPtr.NextBusTimesFinal[routeId] =
-						append(currentStopPtr.NextBusTimesFinal[routeId], minutesUntil)
+					if minutesUntil >= 0 {
+						currentStopPtr.NextBusTimesFinal[routeId] =
+							append(currentStopPtr.NextBusTimesFinal[routeId], minutesUntil)
 
+					}
 				} // Find stop in list
 
 				currentRoutePtr.Stops = append(currentRoutePtr.Stops, stopId)
 			}
-		}
+		} // Take route if defined in config
 
 		// Ensure stops in routes are sorted and unique
 		for i, _ := range Final.Routes {
@@ -383,14 +430,33 @@ func ParseRTDObjects(msg *pb.FeedMessage, conf Config) (FinalObjects, error) {
 			sort.Ints(Final.Routes[i].Stops)
 		}
 
+	} // Iterate through trips feed
+
+	// Iterate through vehicles feed
+	for _, entity := range vehicles.GetEntity() {
+		bus := entity.GetVehicle()
+		routeId := bus.GetTrip().GetRouteId()
+		i := sort.SearchStrings(conf.Buses, routeId)
+
+		// Only take buses found in the config
+		if i < len(conf.Buses) && conf.Buses[i] == routeId {
+			newBus := BusInfo{
+        RouteID : routeId,
+        Lat : float64(bus.GetPosition().GetLatitude()),
+        Lng : float64(bus.GetPosition().GetLongitude()),
+      }
+      Final.Buses = append(Final.Buses, newBus)
+		}
 	}
+
 	// Sort stops once all are recorded
 	sort.Sort(IDSorter(Final.Stops))
 
 	log.Println("Routes:", Final.Routes)
 	log.Println("Stops:", Final.Stops)
+  log.Println("Buses:", Final.Buses)
 
-	return Final, nil
+	return Final
 }
 
 // TODO rename ParseETAObjects, refactor
@@ -471,7 +537,7 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 
 	for _, bus := range objs.ETA_Buses.GetVehicles {
 		if bus.Routeid != 777 && bus.Inservice != 0 {
-			busInfo.SetBusInfo(bus.Routeid, bus.Lat, bus.Lng)
+			busInfo.SetBusInfo(string(bus.Routeid), bus.Lat, bus.Lng)
 			busCollection = append(busCollection, busInfo)
 		}
 	}
