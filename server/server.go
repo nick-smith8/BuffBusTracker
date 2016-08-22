@@ -74,16 +74,15 @@ func SetJson() {
 	var conf = ReadConfig()
 	for {
 		StartTime := time.Now()
-		Creator := lib.CreateParsedObjects(conf)
-		FinalObjects, err := Creator.CreateFinalJson()
+		JSONs := lib.CreateFinalObjects(conf)
 		//BusJson, StopJson, RouteJson, AnnouncementJson, err := Creator.CreateFinalJson()
-		if err != nil {
+		//if err != nil {
 			// panic(err)
-		}
-		RouteJsonToSend = FinalObjects.Routes
-		StopJsonToSend = FinalObjects.Stops
-		BusJsonToSend = FinalObjects.Buses
-		AnnouncementJsonToSend = FinalObjects.Announcements
+		//}
+		RouteJsonToSend = JSONs.Routes
+		StopJsonToSend = JSONs.Stops
+		BusJsonToSend = JSONs.Buses
+		AnnouncementJsonToSend = JSONs.Announcements
 
 		TimeElapsed := time.Since(StartTime)
 		// Sleep remaining time
