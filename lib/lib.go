@@ -68,7 +68,7 @@ type ETA_Stops struct {
 }
 
 type ETA_Buses struct {
-	GetVehicles []struct {
+	GetBuses []struct {
 		Equipmentid        string      `json:"equipmentID"`
 		Lat                float64     `json:"lat"`
 		Lng                float64     `json:"lng"`
@@ -113,7 +113,7 @@ type StopInfo struct {
 }
 
 type BusInfo struct {
-	RouteID string     `json:"routeID"`
+	RouteID string  `json:"routeID"`
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
 }
@@ -241,19 +241,19 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateParsedObjects(conf Config) FinalObjects {
+func CreateFinalObjects(conf Config) FinalJSONs {
 	Sources := []Source{}
 
 	// Initialize ETA
 	ETARequests := []Request{
 		{Client: Client{Url: ROUTES_URL, Type: "json"},
-			GenericStructure: ETA_Routes{}},
+			GenericStructure: &ETA_Routes{}},
 		{Client: Client{Url: STOPS_URL, Type: "json"},
-			GenericStructure: ETA_Stops{}},
+			GenericStructure: &ETA_Stops{}},
 		{Client: Client{Url: BUSES_URL, Type: "json"},
-			GenericStructure: ETA_Buses{}},
+			GenericStructure: &ETA_Buses{}},
 		{Client: Client{Url: ANNOUNCEMENTS_URL, Type: "json"},
-			GenericStructure: ETA_Announcements{}},
+			GenericStructure: &ETA_Announcements{}},
 	}
 	ETASource := Source{
 		Name:     "ETA",
@@ -282,10 +282,11 @@ func CreateParsedObjects(conf Config) FinalObjects {
 	}
 	Sources = append(Sources, RTDSource)
 
-	for _, source := range Sources {
-
+	for i,_ := range Sources {
+    source := &Sources[i]
 		// Send HTTP requests
-		for _, request := range source.Requests {
+		for j,_ := range source.Requests {
+      request := &source.Requests[j]
 			clientResp, err := request.Client.httpCall()
 			if err != nil {
 				log.Println(err)
@@ -295,7 +296,32 @@ func CreateParsedObjects(conf Config) FinalObjects {
 
 			// Parse client responses
 			if request.Type == "json" {
-				err = json.Unmarshal(clientResp, &request.GenericStructure)
+        // Hard-code request interpreting because
+				// switch i {
+				// case 0:
+        //   Parsed := ETA_Routes{}
+        //   err = json.Unmarshal(clientResp, &Parsed)
+        //   source.Requests[i].GenericStructure = Parsed
+        // case 1:
+        //   Parsed := ETA_Stops{}
+        //   err = json.Unmarshal(clientResp, &Parsed)
+        //   source.Requests[i].GenericStructure = Parsed
+        // case 2:
+        //   Parsed := ETA_Buses{}
+        //   err = json.Unmarshal(clientResp, &Parsed)
+        //   source.Requests[i].GenericStructure = Parsed
+        // case 3:
+        //   Parsed := ETA_Announcements{}
+        //   err = json.Unmarshal(clientResp, &Parsed)
+        //   source.Requests[i].GenericStructure = Parsed
+				// }
+
+				//Val := ETA_Announcements{}
+				//StructurePointer := &source.Requests[i].GenericStructure
+				err = json.Unmarshal(clientResp, request.GenericStructure)
+				//log.Println(i, Val)
+				//source.Requests[i].GenericStructure = Val
+				//log.Println(source.Requests[i].GenericStructure)
 			} else if request.Type == "proto" {
 				//a := pb.FeedMessage{}
 				err = proto.Unmarshal(clientResp, request.ProtoStructure)
@@ -307,21 +333,22 @@ func CreateParsedObjects(conf Config) FinalObjects {
 
 		var err error
 		if source.Name == "ETA" {
-			// Process ETA objects
-			//request.Structure, _ = ParseRTDObjects(msg, conf)
+			source.Final, _ = ParseETAObjects(source.Requests)
+			//log.Println(source.Final.Routes)
+			log.Println(source.Final.Announcements)
 		} else if source.Name == "RTD" {
 			source.Final = ParseRTDObjects(source.Requests, conf)
 		}
-		//log.Println("Done parsing")
 
 		if err != nil {
 			log.Println(err)
 		}
 	}
 
-	// Combine FinalObjects
+	log.Println("Combining")
 
-	return Sources[1].Final
+	// Combine FinalObjects
+	return CreateFinalJSON(Sources)
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject */
@@ -329,19 +356,10 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 	Final := FinalObjects{
 		Routes: []RouteInfo{},
 		Stops:  []StopInfo{},
-    Buses:  []BusInfo{},
+		Buses:  []BusInfo{},
 	}
-	trips := new(pb.FeedMessage)
-	vehicles := new(pb.FeedMessage)
-
-	// Grab trips and vehicles from request list
-	if requests[0].Client.Url == RTD_ROUTES_URL {
-		trips = requests[0].ProtoStructure
-		vehicles = requests[1].ProtoStructure
-	} else if requests[0].Client.Url == RTD_BUSES_URL {
-		vehicles = requests[0].ProtoStructure
-		trips = requests[1].ProtoStructure
-	}
+	trips := requests[0].ProtoStructure
+	vehicles := requests[1].ProtoStructure
 
 	// Iterate through every active vehicle for stops, routes
 	for _, entity := range trips.GetEntity() {
@@ -441,59 +459,127 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 		// Only take buses found in the config
 		if i < len(conf.Buses) && conf.Buses[i] == routeId {
 			newBus := BusInfo{
-        RouteID : routeId,
-        Lat : float64(bus.GetPosition().GetLatitude()),
-        Lng : float64(bus.GetPosition().GetLongitude()),
-      }
-      Final.Buses = append(Final.Buses, newBus)
+				RouteID: routeId,
+				Lat:     float64(bus.GetPosition().GetLatitude()),
+				Lng:     float64(bus.GetPosition().GetLongitude()),
+			}
+			Final.Buses = append(Final.Buses, newBus)
 		}
 	}
 
 	// Sort stops once all are recorded
 	sort.Sort(IDSorter(Final.Stops))
 
-	log.Println("Routes:", Final.Routes)
-	log.Println("Stops:", Final.Stops)
-  log.Println("Buses:", Final.Buses)
+	//log.Println("Routes:", Final.Routes)
+	//log.Println("Stops:", Final.Stops)
+	//log.Println("Buses:", Final.Buses)
 
 	return Final
 }
 
-// TODO rename ParseETAObjects, refactor
 /* Creates the final json to be served by the server */
-func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
-	var nextBusTimesStart []int
-	var announcementString []string
-
-	routeCollection := []RouteInfo{}
-	stopCollection := []StopInfo{}
-	busCollection := []BusInfo{}
-
-	routeInfo := RouteInfo{}
-	stopInfo := StopInfo{}
-	busInfo := BusInfo{}
-
+func CreateFinalJSON(Sources []Source) FinalJSONs {
 	JSONs := FinalJSONs{}
+	Final := FinalObjects{
+		Routes:        []RouteInfo{},
+		Stops:         []StopInfo{},
+		Buses:         []BusInfo{},
+		Announcements: []AnnouncementInfo{},
+	}
+
+	for _, source := range Sources {
+		Final.Routes = append(Final.Routes, source.Final.Routes...)
+		Final.Stops = append(Final.Stops, source.Final.Stops...)
+		Final.Buses = append(Final.Buses, source.Final.Buses...)
+		Final.Announcements = append(Final.Announcements,
+			source.Final.Announcements...)
+	}
+
+  log.Println(Sources[0].Final.Announcements)
+  log.Println(Sources[1].Final.Announcements)
+
+	var err error
+	JSONs.Stops, err = json.Marshal(Final.Stops)
+	if err != nil {
+		log.Println("Error Marshalling the JSON for the Audit", err)
+	}
+
+	JSONs.Routes, err = json.Marshal(Final.Routes)
+	if err != nil {
+		log.Println("Error Marshalling the JSON for the Audit", err)
+	}
+
+	JSONs.Buses, err = json.Marshal(Final.Buses)
+	if err != nil {
+		log.Println("Error Marshalling the JSON for the Audit", err)
+	}
+
+	JSONs.Announcements, err = json.Marshal(Final.Announcements)
+	if err != nil {
+		log.Println("Error marshalling the JSOM for the Audit", err)
+	}
+
+	return JSONs
+}
+
+//TODO actually refactor this method
+/* Parse ETA retrieves objects into an instance of FinalObject */
+func ParseETAObjects(requests []Request) (FinalObjects, error) {
+	var nextBusTimesStart []int
+
+	//routeCollection := []RouteInfo{}
+	//stopCollection := []StopInfo{}
+	//busCollection := []BusInfo{}
+
+	log.Println("ParseETAObjects")
+
+	Final := FinalObjects{
+		Routes: []RouteInfo{},
+		Stops:  []StopInfo{},
+		Buses:  []BusInfo{},
+	}
+
+	//log.Println(requests[0].GenericStructure)
+
+	ETARoutes := requests[0].GenericStructure.(*ETA_Routes)
+	ETAStops := requests[1].GenericStructure.(*ETA_Stops)
+	ETABuses := requests[2].GenericStructure.(*ETA_Buses)
+	ETAAnnouncements := requests[3].GenericStructure.(*ETA_Announcements)
+
+  log.Println(ETAAnnouncements)
+
+	//log.Println(ETABuses)
+	//log.Println(requests[1].GenericStructure)
+
+	//routeInfo := RouteInfo{}
+	//stopInfo := StopInfo{}
+	//busInfo := BusInfo{}
+
+	//JSONs := FinalJSONs{}
 	var err error
 
-	for _, route := range objs.ETA_Routes.GetRoutes {
+	for _, route := range ETARoutes.GetRoutes {
 
 		var stopToInt []int
 		for _, stop := range route.Stops {
-			//stopAsInt, _ := strconv.Atoi(stop)
 			stopToInt = append(stopToInt, stop)
 		}
 		if strings.EqualFold(route.Name, "Will Vill - Brown Line") {
 			route.Name = "Buff Bus"
 		}
-		routeInfo.SetRouteInfo(strconv.Itoa(route.ID), route.Name, stopToInt)
-		routeCollection = append(routeCollection, routeInfo)
+		//routeInfo.SetRouteInfo(strconv.Itoa(route.ID), route.Name, stopToInt)
+		newRoute := RouteInfo{
+			ID:    strconv.Itoa(route.ID),
+			Name:  route.Name,
+			Stops: stopToInt,
+		}
+		Final.Routes = append(Final.Routes, newRoute)
 	}
 
 	//NEED to optomize this....  :(
-	for _, stop := range objs.ETA_Stops.GetStops {
+	for _, stop := range ETAStops.GetStops {
 		mapIt := map[string][]int{}
-		for _, bus := range objs.ETA_Buses.GetVehicles {
+		for _, bus := range ETABuses.GetBuses {
 
 			if len(bus.Minutestonextstops) != 0 {
 				for _, minute := range bus.Minutestonextstops {
@@ -514,6 +600,7 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 		for k := range mapIt {
 			sort.Ints(mapIt[k])
 		}
+		// Manually rewrite names
 		if strings.EqualFold(stop.Name, "Discovery Learning Center") || strings.EqualFold(stop.Name, "Public Safety") {
 			stop.Name = "Engineering Center"
 		}
@@ -522,27 +609,42 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 		}
 
 		if !strings.EqualFold(stop.Name, "30th and Colorado E Bound") && !strings.EqualFold(stop.Name, "30th and Colorado WB") {
-			stopInfo.SetStopInfo(stop.ID, stop.Name, mapIt, stop.Lat, stop.Lng)
+			//stopInfo.SetStopInfo(stop.ID, stop.Name, mapIt, stop.Lat, stop.Lng)
+			newStop := StopInfo{
+				ID:                stop.ID,
+				Name:              stop.Name,
+				Lat:               stop.Lat,
+				Lng:               stop.Lng,
+				NextBusTimesFinal: mapIt,
+			}
 			isDuplicate := 0
-			for _, v := range stopCollection {
-				if v.ID == stopInfo.ID {
+			for _, v := range Final.Stops {
+				if v.ID == newStop.ID {
 					isDuplicate = 1
 				}
 			}
 			if isDuplicate == 0 {
-				stopCollection = append(stopCollection, stopInfo)
+				Final.Stops = append(Final.Stops, newStop)
 			}
 		}
 	}
 
-	for _, bus := range objs.ETA_Buses.GetVehicles {
+	// Parse buses
+	for _, bus := range ETABuses.GetBuses {
 		if bus.Routeid != 777 && bus.Inservice != 0 {
-			busInfo.SetBusInfo(string(bus.Routeid), bus.Lat, bus.Lng)
-			busCollection = append(busCollection, busInfo)
+			//busInfo.SetBusInfo(string(bus.Routeid), bus.Lat, bus.Lng)
+			newBus := BusInfo{
+				RouteID: strconv.Itoa(bus.Routeid),
+				Lat:     bus.Lat,
+				Lng:     bus.Lng,
+			}
+			Final.Buses = append(Final.Buses, newBus)
 		}
 	}
 
-	for _, announcement := range objs.ETA_Announcements.GetServiceAnnouncements {
+	// Parse announcements
+	var announcementString []string
+	for _, announcement := range ETAAnnouncements.GetServiceAnnouncements {
 		for _, message := range announcement.Announcements {
 			if message.Text != "" {
 				announcementString = append(announcementString, message.Text)
@@ -550,32 +652,33 @@ func (objs ParsedObjects) CreateFinalJson() (FinalJSONs, error) {
 		}
 	}
 
-	announcementInfo := AnnouncementInfo{Announcements: announcementString}
-
-	JSONs.Routes, err = json.Marshal(routeCollection)
-	if err != nil {
-		log.Println("Error Marshalling the JSON for the Audit", err)
-		//return nil, nil, nil, err
+	newAnnouncement := AnnouncementInfo{
+		Announcements: announcementString,
 	}
+	Final.Announcements = append(Final.Announcements, newAnnouncement)
 
-	JSONs.Stops, err = json.Marshal(stopCollection)
-	if err != nil {
-		log.Println("Error Marshalling the JSON for the Audit", err)
-		//return nil, nil, nil, err
-	}
+	// JSONs.Routes, err = json.Marshal(routeCollection)
+	// if err != nil {
+	// 	log.Println("Error Marshalling the JSON for the Audit", err)
+	// }
+	//
+	// JSONs.Stops, err = json.Marshal(stopCollection)
+	// if err != nil {
+	// 	log.Println("Error Marshalling the JSON for the Audit", err)
+	// }
+	//
+	// JSONs.Buses, err = json.Marshal(busCollection)
+	// if err != nil {
+	// 	log.Println("Error Marshalling the JSON for the Audit", err)
+	// 	//return nil, nil, nil, err
+	// }
+	//
+	// JSONs.Announcements, err = json.Marshal(announcementInfo)
+	// if err != nil {
+	// 	log.Println("Error marshalling the JSOM for the Audit", err)
+	// }
 
-	JSONs.Buses, err = json.Marshal(busCollection)
-	if err != nil {
-		log.Println("Error Marshalling the JSON for the Audit", err)
-		//return nil, nil, nil, err
-	}
-
-	JSONs.Announcements, err = json.Marshal(announcementInfo)
-	if err != nil {
-		log.Println("Error marshalling the JSOM for the Audit", err)
-	}
-
-	return JSONs, err
+	return Final, err
 }
 
 /* Helper functions */
