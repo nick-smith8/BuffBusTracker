@@ -283,8 +283,6 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 				log.Println(err)
 			}
 
-			log.Println("Parsing: ", request.Client.Url)
-
 			// Unmarshall responses
 			if request.Type == "json" {
 				err = json.Unmarshal(clientResp, request.GenericStructure)
