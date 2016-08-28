@@ -1,5 +1,5 @@
 {
   "Username" : "Username",
-  "Passwords" : ["Pass1", "Pass2"]
+  "Password" : "Pass1",
   "Buses": ["FF1", "AB", "DASH"]
 }
