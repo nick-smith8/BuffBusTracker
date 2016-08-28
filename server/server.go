@@ -76,9 +76,9 @@ func SetJson() {
 	var conf = ReadConfig()
 	for {
 		RequestCount++
-		StartTime := time.Now()
+		log.Println("Request:", RequestCount)
 
-		log.Println("Request: ", RequestCount)
+		StartTime := time.Now()
 
 		// Indentify what sources to include
 		included := lib.RequestedSources{
