@@ -75,7 +75,6 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 func SetJson() {
 	var conf = ReadConfig()
 	for {
-		RequestCount++
 		log.Println("Request:", RequestCount)
 
 		StartTime := time.Now()
@@ -103,6 +102,7 @@ func SetJson() {
 		TimeElapsed := time.Since(StartTime)
 		// Sleep remaining time
 		time.Sleep((REQ_INTERVAL * time.Second) - TimeElapsed)
+		RequestCount++
 	}
 }
 
