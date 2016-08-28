@@ -29,6 +29,8 @@ const (
 var (
 	// Holds processed list of stops from RTD schedule
 	rtd_stops = []StopInfo{}
+	// Hold the previous requests for sources that were not updated
+	PreviousSources = []Source{}
 )
 
 /* Holds information parsed from config.json (used for RTD routes) */
@@ -36,6 +38,12 @@ type Config struct {
 	Username string   `json:"Username"`
 	Password string   `json:"Password"`
 	Buses    []string `json:"Buses"`
+}
+
+/* List of sources requested by the server for updates */
+type RequestedSources struct {
+	ETA bool
+	RTD bool
 }
 
 /* Struct definitions for the json coming in from ETA */
@@ -218,19 +226,22 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateFinalObjects(conf Config) FinalJSONs {
+func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 	Sources := []Source{}
 
 	// Initialize ETA
-	ETARequests := []Request{
-		{Client: Client{Url: ROUTES_URL, Type: "json"},
-			GenericStructure: &ETA_Routes{}},
-		{Client: Client{Url: STOPS_URL, Type: "json"},
-			GenericStructure: &ETA_Stops{}},
-		{Client: Client{Url: BUSES_URL, Type: "json"},
-			GenericStructure: &ETA_Buses{}},
-		{Client: Client{Url: ANNOUNCEMENTS_URL, Type: "json"},
-			GenericStructure: &ETA_Announcements{}},
+	var ETARequests []Request
+	if included.ETA {
+		ETARequests = []Request{
+			{Client: Client{Url: ROUTES_URL, Type: "json"},
+				GenericStructure: &ETA_Routes{}},
+			{Client: Client{Url: STOPS_URL, Type: "json"},
+				GenericStructure: &ETA_Stops{}},
+			{Client: Client{Url: BUSES_URL, Type: "json"},
+				GenericStructure: &ETA_Buses{}},
+			{Client: Client{Url: ANNOUNCEMENTS_URL, Type: "json"},
+				GenericStructure: &ETA_Announcements{}},
+		}
 	}
 	ETASource := Source{
 		Name:     "ETA",
@@ -240,17 +251,20 @@ func CreateFinalObjects(conf Config) FinalJSONs {
 	Sources = append(Sources, ETASource)
 
 	// Initialize RTD
-	RTDRequests := []Request{
-		{Client: Client{
-			Url:  RTD_ROUTES_URL,
-			Type: "proto",
-			Auth: Auth{Username: conf.Username, Password: conf.Password},
-		}, ProtoStructure: &pb.FeedMessage{}},
-		{Client: Client{
-			Url:  RTD_BUSES_URL,
-			Type: "proto",
-			Auth: Auth{Username: conf.Username, Password: conf.Password},
-		}, ProtoStructure: &pb.FeedMessage{}},
+	var RTDRequests []Request
+	if included.RTD {
+		RTDRequests = []Request{
+			{Client: Client{
+				Url:  RTD_ROUTES_URL,
+				Type: "proto",
+				Auth: Auth{Username: conf.Username, Password: conf.Password},
+			}, ProtoStructure: &pb.FeedMessage{}},
+			{Client: Client{
+				Url:  RTD_BUSES_URL,
+				Type: "proto",
+				Auth: Auth{Username: conf.Username, Password: conf.Password},
+			}, ProtoStructure: &pb.FeedMessage{}},
+		}
 	}
 	RTDSource := Source{
 		Name:     "RTD",
@@ -285,9 +299,19 @@ func CreateFinalObjects(conf Config) FinalJSONs {
 		// Parse responses
 		var err error
 		if source.Name == "ETA" {
-			source.Final, _ = ParseETAObjects(source.Requests)
+			if !included.ETA && len(PreviousSources) >= 1 {
+				// Add old source data for non-requested updates
+				source.Final = PreviousSources[0].Final
+			} else if included.ETA {
+				// Parse data for requested updates
+				source.Final, _ = ParseETAObjects(source.Requests)
+			}
 		} else if source.Name == "RTD" {
-			source.Final = ParseRTDObjects(source.Requests, conf)
+			if !included.RTD && len(PreviousSources) >= 2 {
+				source.Final = PreviousSources[1].Final
+			} else if included.RTD {
+				source.Final = ParseRTDObjects(source.Requests, conf)
+			}
 		}
 
 		if err != nil {
@@ -295,6 +319,7 @@ func CreateFinalObjects(conf Config) FinalJSONs {
 		}
 	}
 
+	PreviousSources = Sources
 	// Combine FinalObjects
 	return CreateFinalJSON(Sources)
 }

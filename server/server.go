@@ -12,8 +12,13 @@ import (
 )
 
 const (
-	PORT         = "8080"
-	REQ_INTERVAL = 30
+	PORT = "8080"
+	// How often to send requests
+	REQ_INTERVAL = 10
+	// Multiplier to REQ_INTERVAL for this source
+	// eg 3 means request from this source every 3*10 seconds
+	ETA_MULTIPLIER = 1
+	RTD_MULTIPLIER = 3
 )
 
 var (
@@ -22,6 +27,7 @@ var (
 	StopJsonToSend         []byte
 	BusJsonToSend          []byte
 	AnnouncementJsonToSend []byte
+	RequestCount           uint64
 )
 
 func analyticsRequest(s string, i string) {
@@ -69,8 +75,24 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 func SetJson() {
 	var conf = ReadConfig()
 	for {
+		RequestCount++
 		StartTime := time.Now()
-		JSONs := lib.CreateFinalObjects(conf)
+
+		log.Println("Request: ", RequestCount)
+
+		// Indentify what sources to include
+		included := lib.RequestedSources{
+			ETA: false,
+			RTD: false,
+		}
+		if RequestCount%ETA_MULTIPLIER == 0 {
+			included.ETA = true
+		}
+		if RequestCount%RTD_MULTIPLIER == 0 {
+			included.RTD = true
+		}
+
+		JSONs := lib.CreateFinalObjects(included, conf)
 
 		// Update JSONs being served
 		RouteJsonToSend = JSONs.Routes
