@@ -340,11 +340,11 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 
 		// Only take routes found in the config
 		if _, ok := conf.Buses[routeName]; ok {
+			routeId := conf.Buses[routeName]
 			// Rewrite stampede routename
 			if routeName == "STMP" {
 				routeName = "Stampede"
 			}
-			routeId := conf.Buses[routeName]
 			currentRoutePtr := &RouteInfo{}
 
 			// Check if route is already recorded
@@ -430,14 +430,14 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 	for _, entity := range vehicles.GetEntity() {
 		bus := entity.GetVehicle()
 		routeName := bus.GetTrip().GetRouteId()
-		// Rewrite stampede routename
-		if routeName == "STMP" {
-			routeName = "Stampede"
-		}
-		routeId := conf.Buses[routeName]
 
 		// Only take routes found in the config
 		if _, ok := conf.Buses[routeName]; ok {
+			routeId := conf.Buses[routeName]
+			// Rewrite stampede routename
+			if routeName == "STMP" {
+				routeName = "Stampede"
+			}
 			newBus := BusInfo{
 				RouteID: routeId,
 				Lat:     float64(bus.GetPosition().GetLatitude()),
