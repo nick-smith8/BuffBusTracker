@@ -35,9 +35,9 @@ var (
 
 /* Holds information parsed from config.json (used for RTD routes) */
 type Config struct {
-	Username string   `json:"Username"`
-	Password string   `json:"Password"`
-	Buses    []string `json:"Buses"`
+	Username string         `json:"Username"`
+	Password string         `json:"Password"`
+	Buses    map[string]int `json:"Buses"`
 }
 
 /* List of sources requested by the server for updates */
@@ -113,7 +113,7 @@ type ParsedObjects struct {
 
 /* Final structs each source is parsed in to */
 type RouteInfo struct {
-	ID    string `json:"id"`
+	ID    int    `json:"id"`
 	Name  string `json:"name"`
 	Stops []int  `json:"stops"`
 }
@@ -127,7 +127,7 @@ type StopInfo struct {
 }
 
 type BusInfo struct {
-	RouteID string  `json:"routeID"`
+	RouteID int     `json:"routeID"`
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
 }
@@ -336,15 +336,19 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 	for _, entity := range trips.GetEntity() {
 		trip := entity.GetTripUpdate().GetTrip()
 		times := entity.GetTripUpdate().GetStopTimeUpdate()
-		routeId := trip.GetRouteId()
-		i := sort.SearchStrings(conf.Buses, routeId)
+		routeName := trip.GetRouteId()
 
 		// Only take routes found in the config
-		if i < len(conf.Buses) && conf.Buses[i] == routeId {
+		if _, ok := conf.Buses[routeName]; ok {
+			// Rewrite stampede routename
+			if routeName == "STMP" {
+				routeName = "Stampede"
+			}
+			routeId := conf.Buses[routeName]
 			currentRoutePtr := &RouteInfo{}
 
 			// Check if route is already recorded
-			for i, _ = range Final.Routes {
+			for i, _ := range Final.Routes {
 				if Final.Routes[i].ID == routeId {
 					currentRoutePtr = &Final.Routes[i]
 					break
@@ -352,10 +356,10 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 			}
 
 			// Route not seen yet
-			if currentRoutePtr.ID == "" {
+			if currentRoutePtr.ID == 0 {
 				newRoute := RouteInfo{
 					ID:    routeId,
-					Name:  routeId,
+					Name:  routeName,
 					Stops: []int{},
 				}
 				// Add new route and record stops to it
@@ -403,8 +407,9 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 					minutesUntil := int((timeUntil + time.Minute) / time.Minute)
 
 					if minutesUntil >= 0 {
-						currentStopPtr.NextBusTimesFinal[routeId] =
-							append(currentStopPtr.NextBusTimesFinal[routeId], minutesUntil)
+						routeStr := strconv.Itoa(routeId)
+						currentStopPtr.NextBusTimesFinal[routeStr] =
+							append(currentStopPtr.NextBusTimesFinal[routeStr], minutesUntil)
 
 					}
 				} // Find stop in list
@@ -424,11 +429,15 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 	// Iterate through vehicles feed
 	for _, entity := range vehicles.GetEntity() {
 		bus := entity.GetVehicle()
-		routeId := bus.GetTrip().GetRouteId()
-		i := sort.SearchStrings(conf.Buses, routeId)
+		routeName := bus.GetTrip().GetRouteId()
+		// Rewrite stampede routename
+		if routeName == "STMP" {
+			routeName = "Stampede"
+		}
+		routeId := conf.Buses[routeName]
 
-		// Only take buses found in the config
-		if i < len(conf.Buses) && conf.Buses[i] == routeId {
+		// Only take routes found in the config
+		if _, ok := conf.Buses[routeName]; ok {
 			newBus := BusInfo{
 				RouteID: routeId,
 				Lat:     float64(bus.GetPosition().GetLatitude()),
@@ -472,7 +481,7 @@ func ParseETAObjects(requests []Request) (FinalObjects, error) {
 		}
 
 		newRoute := RouteInfo{
-			ID:    strconv.Itoa(route.ID),
+			ID:    route.ID,
 			Name:  route.Name,
 			Stops: stopToInt,
 		}
@@ -535,7 +544,7 @@ func ParseETAObjects(requests []Request) (FinalObjects, error) {
 	for _, bus := range ETABuses.GetBuses {
 		if bus.Routeid != 777 && bus.Inservice != 0 {
 			newBus := BusInfo{
-				RouteID: strconv.Itoa(bus.Routeid),
+				RouteID: bus.Routeid,
 				Lat:     bus.Lat,
 				Lng:     bus.Lng,
 			}

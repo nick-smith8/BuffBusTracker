@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 )
@@ -120,7 +119,7 @@ func ReadConfig() lib.Config {
 		log.Fatal("Unable to parse config: ", configfile)
 	}
 	// Just in case
-	sort.Strings(config.Buses)
+	//sort.Strings(config.Buses)
 	return config
 }
 

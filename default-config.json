@@ -1,5 +1,7 @@
 {
-  "Username" : "Username",
-  "Password" : "Pass1",
-  "Buses": ["FF1", "AB", "DASH"]
+    "Username": "Username",
+    "Password": "Password",
+    "Buses": {
+        "STMP": 20
+    }
 }
