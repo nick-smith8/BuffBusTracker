@@ -79,9 +79,7 @@ memcheck(){
 # Cleanly start container
 start() {
     echo -e "Starting $CONTAINER_NAME...\n"
-    #if ! `docker images | grep -q $IMAGE_NAME`; then
-        build
-    #fi
+    build
     if `docker ps | grep -q $CONTAINER_NAME`; then
         stop
     fi
@@ -97,7 +95,8 @@ start() {
 # Restart running container
 restart() {
     echo -e "Restart $CONTAINER_NAME...\n"
-    docker restart $CONTAINER_NAME
+    stop
+    start
     return $?
 }
 
