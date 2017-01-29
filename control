@@ -8,14 +8,14 @@ if [ -f /etc/init.d/functions ]; then
   . /etc/init.d/functions
 fi
 
-IMAGE_NAME='buffbus-image'
-CONTAINER_NAME='buffbus-server'
+IMAGE_NAME="buffbus-image"
+CONTAINER_NAME="buffbus-server"
 
 # Email settings
 #EMAIL_ADDRESS='cherishdevapps@gmail.com'
-EMAIL_ADDRESS='falconertc@gmail.com'
-EMAIL_STATUS_SUBJECT='Container: $CONTAINER_NAME no longer reporting'
-EMAIL_STATUS_BODY='It broke'
+EMAIL_ADDRESS="falconertc@gmail.com"
+EMAIL_STATUS_SUBJECT="Container: $CONTAINER_NAME no longer reporting"
+EMAIL_STATUS_BODY="It broke"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Docker requires root access to run" 1>&2
