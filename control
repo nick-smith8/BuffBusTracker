@@ -11,20 +11,32 @@ fi
 IMAGE_NAME='buffbus-image'
 CONTAINER_NAME='buffbus-server'
 
+# Email settings
+#EMAIL_ADDRESS='cherishdevapps@gmail.com'
+EMAIL_ADDRESS='falconertc@gmail.com'
+EMAIL_STATUS_SUBJECT='Container: $CONTAINER_NAME no longer reporting'
+EMAIL_STATUS_BODY='It broke'
+
 if [[ $EUID -ne 0 ]]; then
   echo "Docker requires root access to run" 1>&2
   exit 1
 fi
 
 usage() {
-  echo "Usage: $0 {build|start|restart|stop|shell|show|total|analyze|daily|hourly|memcheck}"
+  echo "Usage: $0 {status|build|start|restart|stop|shell|show|total|analyze|daily|hourly|memcheck}"
   return 0
+}
+
+#
+status() {
+  echo -e "Checking status of $CONTAINER_NAME...\n"
+  echo $EMAIL_STATUS_BODY | mail -s $EMAIL_STATUS_SUBJECT $EMAIL_ADDRESS
 }
 
 # Build docker image
 build() {
   echo -e "Building $IMAGE_NAME...\n"
-  sudo docker build -t $IMAGE_NAME .
+  sudo docker "build" -t $IMAGE_NAME .
   return $?
 }
 
@@ -79,13 +91,22 @@ memcheck(){
 # Cleanly start container
 start() {
   echo -e "Starting $CONTAINER_NAME...\n"
-  build
-  if `docker ps | grep -q $CONTAINER_NAME`; then
+
+  # Stop existing container if running
+  docker ps | grep -q $CONTAINER_NAME
+  if [ $? -eq 0 ]; then
     stop
   fi
-  #-v `pwd`:/go/src/BuffBusTracker/ \
+
+  # Build image if necessary
+  docker images | grep -q $IMAGE_NAME
+  if [ $? -eq 1 ]; then
+    build
+  fi
+
   docker run \
   --name $CONTAINER_NAME -h $CONTAINER_NAME \
+  -v "`pwd`":/go/src/BuffBusTracker/ \
   --restart=always \
   -p 8080:8080 \
   -d -t $IMAGE_NAME
@@ -114,11 +135,14 @@ stop() {
 
 # Open a shell inside the container
 shell() {
-  docker exec -it $CONTAINER_NAME /bin/bashcd
+  docker exec -it $CONTAINER_NAME /bin/bash
   return $?
 }
 
 case $1 in
+  status)
+    status
+  ;;
   build)
     build
   ;;
