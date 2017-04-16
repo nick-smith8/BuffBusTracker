@@ -107,7 +107,6 @@ start() {
 
   docker run \
   --name $CONTAINER_NAME -h $CONTAINER_NAME \
-  -v "`pwd`":/go/src/BuffBusTracker/ \
   --restart=always \
   -p 8081:8081 \
   -d -t $IMAGE_NAME
