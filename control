@@ -29,8 +29,9 @@ usage() {
 
 #
 status() {
+  #TODO check status
   echo -e "Checking status of $CONTAINER_NAME...\n"
-  echo $EMAIL_STATUS_BODY | mail -s $EMAIL_STATUS_SUBJECT $EMAIL_ADDRESS
+  echo "$EMAIL_STATUS_BODY" | mail -s "$EMAIL_STATUS_SUBJECT" "$EMAIL_ADDRESS"
 }
 
 # Build docker image
