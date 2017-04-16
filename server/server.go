@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	PORT = "8080"
+	PORT = "8081"
 	// How often to send requests
 	REQ_INTERVAL = 10
 	// Multiplier to REQ_INTERVAL for this source

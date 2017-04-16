@@ -8,8 +8,8 @@ if [ -f /etc/init.d/functions ]; then
   . /etc/init.d/functions
 fi
 
-IMAGE_NAME="buffbus-image"
-CONTAINER_NAME="buffbus-server"
+IMAGE_NAME="buffbus-image-test"
+CONTAINER_NAME="buffbus-server-test"
 
 # Email settings
 #EMAIL_ADDRESS='cherishdevapps@gmail.com'
@@ -37,7 +37,7 @@ status() {
 # Build docker image
 build() {
   echo -e "Building $IMAGE_NAME...\n"
-  sudo docker "build" -t $IMAGE_NAME .
+  sudo docker build -t $IMAGE_NAME $@ .
   return $?
 }
 
@@ -109,7 +109,7 @@ start() {
   --name $CONTAINER_NAME -h $CONTAINER_NAME \
   -v "`pwd`":/go/src/BuffBusTracker/ \
   --restart=always \
-  -p 8080:8080 \
+  -p 8081:8081 \
   -d -t $IMAGE_NAME
   return $?
 }
@@ -145,7 +145,7 @@ case $1 in
     status
   ;;
   build)
-    build
+    build "${@:2}"
   ;;
   start)
     start
