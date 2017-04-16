@@ -15,3 +15,4 @@ Server that pulls from eta api, formats the data to the JSON needed by our IOS/A
   * Clean-up code
   * Add persistent logging for public site(docker volumes)
   * Add a way to notify by email when the server fails (bash script + docker logging?)
+  * Rewrite stop names based on the direction the bus is going

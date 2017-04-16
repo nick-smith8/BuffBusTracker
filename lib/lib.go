@@ -406,10 +406,15 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 					// Ceiling time estimate for plausible deniability
 					minutesUntil := int((timeUntil + time.Minute) / time.Minute)
 
-					if minutesUntil >= 0 {
+					if minutesUntil >= 0 && minutesUntil <= 300 {
 						routeStr := strconv.Itoa(routeId)
+						// Prepend next time value
 						currentStopPtr.NextBusTimesFinal[routeStr] =
-							append(currentStopPtr.NextBusTimesFinal[routeStr], minutesUntil)
+							append([]int{minutesUntil}, currentStopPtr.NextBusTimesFinal[routeStr]...)
+						// Ensure earliest times are presented first
+						if !sort.IntsAreSorted(currentStopPtr.NextBusTimesFinal[routeStr]) {
+							sort.Ints(currentStopPtr.NextBusTimesFinal[routeStr])
+						}
 
 					}
 				} // Find stop in list
