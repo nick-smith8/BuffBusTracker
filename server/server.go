@@ -16,8 +16,9 @@ const (
 	REQ_INTERVAL = 10
 	// Multiplier to REQ_INTERVAL for this source
 	// eg 3 means request from this source every 3*10 seconds
-	ETA_MULTIPLIER = 1
-	RTD_MULTIPLIER = 3
+	ETA_MULTIPLIER         = 1
+	RTD_MULTIPLIER         = 3
+	TRANSITTIME_MULTIPLIER = 1
 )
 
 var (
@@ -84,10 +85,13 @@ func SetJson() {
 			RTD: false,
 		}
 		if RequestCount%ETA_MULTIPLIER == 0 {
-			included.ETA = true
+			//included.ETA = true
 		}
 		if RequestCount%RTD_MULTIPLIER == 0 {
-			included.RTD = true
+			//included.RTD = true
+		}
+		if RequestCount%TRANSITTIME_MULTIPLIER == 0 {
+			included.TransitTime = true
 		}
 
 		JSONs := lib.CreateFinalObjects(included, conf)

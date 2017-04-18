@@ -16,14 +16,16 @@ import (
 )
 
 const (
-	ROUTES_URL        = "http://buffbus.etaspot.net/service.php?service=get_routes"
-	STOPS_URL         = "http://buffbus.etaspot.net/service.php?service=get_stops"
-	BUSES_URL         = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
-	ANNOUNCEMENTS_URL = "http://buffbus.etaspot.net/service.php?service=get_service_announcements"
-	RTD_ROUTES_URL    = "http://www.rtd-denver.com/google_sync/TripUpdate.pb"
-	RTD_BUSES_URL     = "http://www.rtd-denver.com/google_sync/VehiclePosition.pb"
-	USER_AGENT        = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.1.25 (KHTML, like Gecko) Version/8.0 Safari/600.1.25"
-	RTD_STOPS_FILE    = "RTDstops.txt"
+	ROUTES_URL             = "http://buffbus.etaspot.net/service.php?service=get_routes"
+	STOPS_URL              = "http://buffbus.etaspot.net/service.php?service=get_stops"
+	BUSES_URL              = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
+	ANNOUNCEMENTS_URL      = "http://buffbus.etaspot.net/service.php?service=get_service_announcements"
+	RTD_ROUTES_URL         = "http://www.rtd-denver.com/google_sync/TripUpdate.pb"
+	RTD_BUSES_URL          = "http://www.rtd-denver.com/google_sync/VehiclePosition.pb"
+	TRANSITTIME_ROUTES_URL = "http://www.transitime.org/api/v1/key/SECRET/agency/rtd-denver/command/gtfs-rt/tripUpdates"
+	TRANSITTIME_BUSES_URL  = "http://www.transitime.org/api/v1/key/SECRET/agency/rtd-denver/command/gtfs-rt/vehiclePositions"
+	USER_AGENT             = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/600.1.25 (KHTML, like Gecko) Version/8.0 Safari/600.1.25"
+	RTD_STOPS_FILE         = "RTDstops.txt"
 )
 
 var (
@@ -42,8 +44,9 @@ type Config struct {
 
 /* List of sources requested by the server for updates */
 type RequestedSources struct {
-	ETA bool
-	RTD bool
+	ETA         bool
+	RTD         bool
+	TransitTime bool
 }
 
 /* Struct definitions for the json coming in from ETA */
@@ -273,6 +276,27 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 	}
 	Sources = append(Sources, RTDSource)
 
+	// Initialize TransitTime
+	var TransitTimeRequests []Request
+	if included.TransitTime {
+		TransitTimeRequests = []Request{
+			{Client: Client{
+				Url:  TRANSITTIME_ROUTES_URL,
+				Type: "proto",
+			}, ProtoStructure: &pb.FeedMessage{}},
+			{Client: Client{
+				Url:  TRANSITTIME_BUSES_URL,
+				Type: "proto",
+			}, ProtoStructure: &pb.FeedMessage{}},
+		}
+	}
+	TransitTimeSource := Source{
+		Name:     "TransitTime",
+		Requests: TransitTimeRequests,
+		Final:    FinalObjects{},
+	}
+	Sources = append(Sources, TransitTimeSource)
+
 	for i, _ := range Sources {
 		source := &Sources[i]
 		// Send HTTP requests
@@ -310,6 +334,12 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 			} else if included.RTD {
 				source.Final = ParseRTDObjects(source.Requests, conf)
 			}
+		} else if source.Name == "TransitTime" {
+			if !included.TransitTime && len(PreviousSources) >= 2 {
+				source.Final = PreviousSources[2].Final
+			} else if included.TransitTime {
+				source.Final = ParseTransitTimeObjects(source.Requests, conf)
+			}
 		}
 
 		if err != nil {
@@ -320,6 +350,139 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 	PreviousSources = Sources
 	// Combine FinalObjects
 	return CreateFinalJSON(Sources)
+}
+
+/* Parse RTD retrieved objects into an instance of FinalObject
+   TODO: This is the exact same as RTD. There's a better way to do this.
+  */
+func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
+	Final := FinalObjects{
+		Routes: []RouteInfo{},
+		Stops:  []StopInfo{},
+		Buses:  []BusInfo{},
+	}
+	trips := requests[0].ProtoStructure
+	vehicles := requests[1].ProtoStructure
+
+	// Iterate through every active vehicle for stops, routes
+	for _, entity := range trips.GetEntity() {
+		trip := entity.GetTripUpdate().GetTrip()
+		times := entity.GetTripUpdate().GetStopTimeUpdate()
+		routeName := trip.GetRouteId()
+
+		// Only take routes found in the config
+		if _, ok := conf.Buses[routeName]; ok {
+			routeId := conf.Buses[routeName]
+
+			currentRoutePtr := &RouteInfo{}
+
+			// Check if route is already recorded
+			for i, _ := range Final.Routes {
+				if Final.Routes[i].ID == routeId {
+					currentRoutePtr = &Final.Routes[i]
+					break
+				}
+			}
+
+			// Route not seen yet
+			if currentRoutePtr.ID == 0 {
+				log.Println("Route is new")
+				newRoute := RouteInfo{
+					ID:    routeId,
+					Name:  routeName,
+					Stops: []int{},
+				}
+				// Add new route and record stops to it
+				Final.Routes = append(Final.Routes, newRoute)
+				currentRoutePtr = &Final.Routes[len(Final.Routes)-1]
+			}
+
+			// For every stop in current route
+			for _, stopTimeUpdate := range times {
+				stopId, err := strconv.Atoi(stopTimeUpdate.GetStopId())
+				if err != nil {
+					log.Println(err)
+				}
+
+				// Find the index of this stop in our stop list
+				i := sort.Search(len(rtd_stops),
+					func(i int) bool { return rtd_stops[i].ID >= stopId })
+				if i < len(rtd_stops) && rtd_stops[i].ID == stopId {
+					currentStopPtr := &StopInfo{}
+					// Check if stop is already recorded
+					for j, _ := range Final.Stops {
+						if Final.Stops[j].ID == stopId {
+							currentStopPtr = &Final.Stops[j]
+							break
+						}
+					}
+
+					// Stop not seen yet
+					if currentStopPtr.ID == 0 {
+						newStop := StopInfo{
+							ID:                rtd_stops[i].ID,
+							Name:              rtd_stops[i].Name,
+							Lat:               rtd_stops[i].Lat,
+							Lng:               rtd_stops[i].Lng,
+							NextBusTimesFinal: map[string][]int{},
+						}
+						log.Println(" Stop is new")
+						// Add new stop and record active buses to it
+						Final.Stops = append(Final.Stops, newStop)
+						currentStopPtr = &Final.Stops[len(Final.Stops)-1]
+					}
+
+					arrivalTime := time.Unix(stopTimeUpdate.GetArrival().GetTime(), 0)
+					timeUntil := arrivalTime.Sub(time.Now())
+					// Ceiling time estimate for plausible deniability
+					minutesUntil := int((timeUntil + time.Minute) / time.Minute)
+
+					if minutesUntil >= 0 && minutesUntil <= 300 {
+						routeStr := strconv.Itoa(routeId)
+						// Prepend next time value
+						currentStopPtr.NextBusTimesFinal[routeStr] =
+							append([]int{minutesUntil}, currentStopPtr.NextBusTimesFinal[routeStr]...)
+						// Ensure earliest times are presented first
+						if !sort.IntsAreSorted(currentStopPtr.NextBusTimesFinal[routeStr]) {
+							sort.Ints(currentStopPtr.NextBusTimesFinal[routeStr])
+						}
+
+					}
+				} // Find stop in list
+
+				currentRoutePtr.Stops = append(currentRoutePtr.Stops, stopId)
+			}
+		} // Take route if defined in config
+
+		// Ensure stops in routes are sorted and unique
+		for i, _ := range Final.Routes {
+			Final.Routes[i].Stops = RemoveDuplicates(Final.Routes[i].Stops)
+			sort.Ints(Final.Routes[i].Stops)
+		}
+
+	} // Iterate through trips feed
+
+	// Iterate through vehicles feed
+	for _, entity := range vehicles.GetEntity() {
+		bus := entity.GetVehicle()
+		routeName := bus.GetTrip().GetRouteId()
+
+		// Only take routes found in the config
+		if _, ok := conf.Buses[routeName]; ok {
+			routeId := conf.Buses[routeName]
+			newBus := BusInfo{
+				RouteID: routeId,
+				Lat:     float64(bus.GetPosition().GetLatitude()),
+				Lng:     float64(bus.GetPosition().GetLongitude()),
+			}
+			Final.Buses = append(Final.Buses, newBus)
+		}
+	}
+
+	// Sort stops once all are recorded
+	sort.Sort(IDSorter(Final.Stops))
+
+	return Final
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject */
