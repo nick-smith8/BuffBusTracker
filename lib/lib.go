@@ -37,9 +37,14 @@ var (
 
 /* Holds information parsed from config.json (used for RTD routes) */
 type Config struct {
+	Name     string         `json:"Name"`
 	Username string         `json:"Username"`
 	Password string         `json:"Password"`
+	Key      string         `json:"Key"`
 	Buses    map[string]int `json:"Buses"`
+}
+type Configs struct {
+	Sources []Config `json:"Sources"`
 }
 
 /* List of sources requested by the server for updates */
@@ -180,6 +185,7 @@ type Source struct {
 	Name     string
 	Requests []Request
 	Final    FinalObjects
+	Config   Config
 }
 
 /* Create sorter for StopInfo objects */
@@ -229,10 +235,13 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
+func CreateFinalObjects(included RequestedSources, confs Configs) FinalJSONs {
 	Sources := []Source{}
+	Conf := Config{}
+	SourceName := ""
 
 	// Initialize ETA
+	SourceName = "ETA"
 	var ETARequests []Request
 	if included.ETA {
 		ETARequests = []Request{
@@ -247,53 +256,76 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 		}
 	}
 	ETASource := Source{
-		Name:     "ETA",
+		Name:     SourceName,
 		Requests: ETARequests,
 		Final:    FinalObjects{},
+		Config:   Config{},
 	}
 	Sources = append(Sources, ETASource)
 
 	// Initialize RTD
+	SourceName = "RTD"
+	for _, elem := range confs.Sources {
+		if elem.Name == SourceName {
+			Conf = elem
+			break
+		}
+	}
+
 	var RTDRequests []Request
 	if included.RTD {
 		RTDRequests = []Request{
 			{Client: Client{
 				Url:  RTD_ROUTES_URL,
 				Type: "proto",
-				Auth: Auth{Username: conf.Username, Password: conf.Password},
+				Auth: Auth{Username: Conf.Username, Password: Conf.Password},
 			}, ProtoStructure: &pb.FeedMessage{}},
 			{Client: Client{
 				Url:  RTD_BUSES_URL,
 				Type: "proto",
-				Auth: Auth{Username: conf.Username, Password: conf.Password},
+				Auth: Auth{Username: Conf.Username, Password: Conf.Password},
 			}, ProtoStructure: &pb.FeedMessage{}},
 		}
 	}
 	RTDSource := Source{
-		Name:     "RTD",
+		Name:     SourceName,
 		Requests: RTDRequests,
 		Final:    FinalObjects{},
+		Config:   Conf,
 	}
 	Sources = append(Sources, RTDSource)
 
 	// Initialize TransitTime
+	SourceName = "TransitTime"
+	for _, elem := range confs.Sources {
+		if elem.Name == SourceName {
+			Conf = elem
+			break
+		}
+	}
+
+	// Insert the authentication key
+	TransitRoutesAuthUrl := strings.Replace(TRANSITTIME_ROUTES_URL, "SECRET", Conf.Key, 1)
+	TransitBusesAuthUrl := strings.Replace(TRANSITTIME_BUSES_URL, "SECRET", Conf.Key, 1)
+
 	var TransitTimeRequests []Request
 	if included.TransitTime {
 		TransitTimeRequests = []Request{
 			{Client: Client{
-				Url:  TRANSITTIME_ROUTES_URL,
+				Url:  TransitRoutesAuthUrl,
 				Type: "proto",
 			}, ProtoStructure: &pb.FeedMessage{}},
 			{Client: Client{
-				Url:  TRANSITTIME_BUSES_URL,
+				Url:  TransitBusesAuthUrl,
 				Type: "proto",
 			}, ProtoStructure: &pb.FeedMessage{}},
 		}
 	}
 	TransitTimeSource := Source{
-		Name:     "TransitTime",
+		Name:     SourceName,
 		Requests: TransitTimeRequests,
 		Final:    FinalObjects{},
+		Config:   Conf,
 	}
 	Sources = append(Sources, TransitTimeSource)
 
@@ -332,13 +364,14 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 			if !included.RTD && len(PreviousSources) >= 2 {
 				source.Final = PreviousSources[1].Final
 			} else if included.RTD {
-				source.Final = ParseRTDObjects(source.Requests, conf)
+
+				source.Final = ParseRTDObjects(source.Requests, source.Config)
 			}
 		} else if source.Name == "TransitTime" {
 			if !included.TransitTime && len(PreviousSources) >= 2 {
 				source.Final = PreviousSources[2].Final
 			} else if included.TransitTime {
-				source.Final = ParseTransitTimeObjects(source.Requests, conf)
+				source.Final = ParseTransitTimeObjects(source.Requests, source.Config)
 			}
 		}
 
@@ -354,7 +387,7 @@ func CreateFinalObjects(included RequestedSources, conf Config) FinalJSONs {
 
 /* Parse RTD retrieved objects into an instance of FinalObject
    TODO: This is the exact same as RTD. There's a better way to do this.
-  */
+*/
 func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 	Final := FinalObjects{
 		Routes: []RouteInfo{},
@@ -386,7 +419,6 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 
 			// Route not seen yet
 			if currentRoutePtr.ID == 0 {
-				log.Println("Route is new")
 				newRoute := RouteInfo{
 					ID:    routeId,
 					Name:  routeName,
@@ -426,7 +458,6 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 							Lng:               rtd_stops[i].Lng,
 							NextBusTimesFinal: map[string][]int{},
 						}
-						log.Println(" Stop is new")
 						// Add new stop and record active buses to it
 						Final.Stops = append(Final.Stops, newStop)
 						currentStopPtr = &Final.Stops[len(Final.Stops)-1]

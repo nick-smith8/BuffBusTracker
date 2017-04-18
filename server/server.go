@@ -14,6 +14,7 @@ const (
 	PORT = "8081"
 	// How often to send requests
 	REQ_INTERVAL = 10
+	CONFIG_FILE  = "config-new.json"
 	// Multiplier to REQ_INTERVAL for this source
 	// eg 3 means request from this source every 3*10 seconds
 	ETA_MULTIPLIER         = 1
@@ -73,7 +74,7 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 // Sets the global variables to the json that will be sent
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
-	var conf = ReadConfig()
+	var conf = ReadConfigs()
 	for {
 		log.Println("Request:", RequestCount)
 
@@ -88,7 +89,7 @@ func SetJson() {
 			//included.ETA = true
 		}
 		if RequestCount%RTD_MULTIPLIER == 0 {
-			//included.RTD = true
+			included.RTD = true
 		}
 		if RequestCount%TRANSITTIME_MULTIPLIER == 0 {
 			included.TransitTime = true
@@ -110,21 +111,21 @@ func SetJson() {
 }
 
 /* Reads info from config file */
-func ReadConfig() lib.Config {
-	configfile := "config.json"
-	file, err := os.Open(configfile)
+func ReadConfigs() lib.Configs {
+	file, err := os.Open(CONFIG_FILE)
 	if err != nil {
-		log.Fatal("Config file is missing: ", configfile)
+		log.Fatal("Config file is missing: ", CONFIG_FILE)
 	}
 	decoder := json.NewDecoder(file)
-	config := lib.Config{}
-	err = decoder.Decode(&config)
+	configs := lib.Configs{}
+	err = decoder.Decode(&configs)
 	if err != nil {
-		log.Fatal("Unable to parse config: ", configfile)
+		log.Fatal("Unable to parse config: ", CONFIG_FILE)
 	}
+	log.Println("Config", configs)
 	// Just in case
 	//sort.Strings(config.Buses)
-	return config
+	return configs
 }
 
 /* Setup HTTP handlers oncreate */
