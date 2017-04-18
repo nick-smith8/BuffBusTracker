@@ -14,7 +14,7 @@ const (
 	PORT = "8081"
 	// How often to send requests
 	REQ_INTERVAL = 10
-	CONFIG_FILE  = "config-new.json"
+	CONFIG_FILE  = "config.json"
 	// Multiplier to REQ_INTERVAL for this source
 	// eg 3 means request from this source every 3*10 seconds
 	ETA_MULTIPLIER         = 1
@@ -122,7 +122,6 @@ func ReadConfigs() lib.Configs {
 	if err != nil {
 		log.Fatal("Unable to parse config: ", CONFIG_FILE)
 	}
-	log.Println("Config", configs)
 	// Just in case
 	//sort.Strings(config.Buses)
 	return configs

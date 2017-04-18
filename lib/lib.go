@@ -406,6 +406,19 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 		// Only take routes found in the config
 		if _, ok := conf.Buses[routeName]; ok {
 			routeId := conf.Buses[routeName]
+			if routeName == "STMP" {
+				routeName = "Stampede-TT"
+			} else if routeName == "FF1" {
+				routeName = "FF1-TT"
+			} else if routeName == "FF2" {
+				routeName = "FF2-TT"
+			} else if routeName == "SKIP" {
+				routeName = "SKIP-TT"
+			} else if routeName == "DASH" {
+				routeName = "DASH-TT"
+			} else if routeName == "HOP" {
+				routeName = "HOP-TT"
+			}
 
 			currentRoutePtr := &RouteInfo{}
 
@@ -501,6 +514,19 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 		// Only take routes found in the config
 		if _, ok := conf.Buses[routeName]; ok {
 			routeId := conf.Buses[routeName]
+			if routeName == "STMP" {
+				routeName = "Stampede-TT"
+			} else if routeName == "FF1" {
+				routeName = "FF1-TT"
+			} else if routeName == "FF2" {
+				routeName = "FF2-TT"
+			} else if routeName == "SKIP" {
+				routeName = "SKIP-TT"
+			} else if routeName == "DASH" {
+				routeName = "DASH-TT"
+			} else if routeName == "HOP" {
+				routeName = "HOP-TT"
+			}
 			newBus := BusInfo{
 				RouteID: routeId,
 				Lat:     float64(bus.GetPosition().GetLatitude()),
@@ -537,7 +563,17 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 			routeId := conf.Buses[routeName]
 			// Rewrite stampede routename
 			if routeName == "STMP" {
-				routeName = "Stampede"
+				routeName = "Stampede-RTD"
+			} else if routeName == "FF1" {
+				routeName = "FF1-RTD"
+			} else if routeName == "FF2" {
+				routeName = "FF2-RTD"
+			} else if routeName == "SKIP" {
+				routeName = "SKIP-RTD"
+			} else if routeName == "DASH" {
+				routeName = "DASH-RTD"
+			} else if routeName == "HOP" {
+				routeName = "HOP-RTD"
 			}
 			currentRoutePtr := &RouteInfo{}
 
@@ -635,7 +671,17 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 			routeId := conf.Buses[routeName]
 			// Rewrite stampede routename
 			if routeName == "STMP" {
-				routeName = "Stampede"
+				routeName = "Stampede-RTD"
+			} else if routeName == "FF1" {
+				routeName = "FF1-RTD"
+			} else if routeName == "FF2" {
+				routeName = "FF2-RTD"
+			} else if routeName == "SKIP" {
+				routeName = "SKIP-RTD"
+			} else if routeName == "DASH" {
+				routeName = "DASH-RTD"
+			} else if routeName == "HOP" {
+				routeName = "HOP-RTD"
 			}
 			newBus := BusInfo{
 				RouteID: routeId,
