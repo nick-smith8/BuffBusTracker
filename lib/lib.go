@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	pb "BuffBusTracker/lib/proto"
@@ -225,8 +226,6 @@ func CreateFinalObjects(included map[string]bool, confs Configs, StartTime time.
 	Conf := Config{}
 	SourceName := ""
 
-	log.Println(" Time elapsed1: ", time.Since(StartTime))
-
 	// Initialize ETA
 	SourceName = "ETA"
 	var ETARequests []Request
@@ -293,8 +292,6 @@ func CreateFinalObjects(included map[string]bool, confs Configs, StartTime time.
 		}
 	}
 
-	log.Println(" Time elapsed2: ", time.Since(StartTime))
-
 	// Insert the authentication key
 	TransitRoutesAuthUrl := strings.Replace(TRANSITTIME_ROUTES_URL, "SECRET", Conf.Key, 1)
 	TransitBusesAuthUrl := strings.Replace(TRANSITTIME_BUSES_URL, "SECRET", Conf.Key, 1)
@@ -321,47 +318,53 @@ func CreateFinalObjects(included map[string]bool, confs Configs, StartTime time.
 	}
 	Sources = append(Sources, TransitTimeSource)
 
-	log.Println(" Time elapsed3: ", time.Since(StartTime))
+	log.Println(" Starting requests: ", time.Since(StartTime))
 
-	//TODO parallelize this
+	var wg sync.WaitGroup
+
+	// Process sources in parallel
 	for i, _ := range Sources {
-		log.Println(" log: ", i)
 		source := &Sources[i]
-		// Send HTTP requests
-		for j, _ := range source.Requests {
-			request := &source.Requests[j]
-			clientResp, err := request.Client.httpCall()
-			if err != nil {
-				log.Println(err)
-			}
-			log.Println(" Time elapsed: ", time.Since(StartTime))
-
-			// Unmarshall responses
-			if request.Type == "json" {
-				err = json.Unmarshal(clientResp, request.GenericStructure)
-			} else if request.Type == "proto" {
-				err = proto.Unmarshal(clientResp, request.ProtoStructure)
-			}
-			if err != nil {
-				log.Println(err)
-			}
-		}
-
-		// Add old source data for non-requested updates
 		if !included[source.Name] {
+			// Add old source data for non-requested updates
 			source.Final = PreviousObjects[source.Name]
 		} else {
-			// Parse data for requested updates
-			source.Final = source.Parse(source.Requests, source.Config)
-			PreviousObjects[source.Name] = source.Final
+			// Parse data for requested update
+			wg.Add(1)
+			go processSource(source, StartTime, &wg)
 		}
-
 	}
+	wg.Wait()
 
-	log.Println(" Time elapsed4: ", time.Since(StartTime))
-	//PreviousSources = Sources
+	log.Println(" Requsts finished: ", time.Since(StartTime))
 	// Combine FinalObjects
 	return CreateFinalJSON(Sources)
+}
+
+func processSource(source *Source, StartTime time.Time, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for j, _ := range source.Requests {
+		request := &source.Requests[j]
+		clientResp, err := request.Client.httpCall()
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(" Processing ", source.Name, time.Since(StartTime))
+
+		// Unmarshall responses
+		if request.Type == "json" {
+			err = json.Unmarshal(clientResp, request.GenericStructure)
+		} else if request.Type == "proto" {
+			err = proto.Unmarshal(clientResp, request.ProtoStructure)
+		}
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	log.Println(" Processing req...: ", source.Name, time.Since(StartTime))
+	source.Final = source.Parse(source.Requests, source.Config)
+	log.Println(" Processing req... done: ", source.Name, time.Since(StartTime))
+	PreviousObjects[source.Name] = source.Final
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject
