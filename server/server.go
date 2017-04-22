@@ -78,25 +78,23 @@ func SetJson() {
 	for {
 		log.Println("Request:", RequestCount)
 
-		StartTime := time.Now()
+		startTime := time.Now()
 		performRequest := false
+		includedSources := map[string]bool{}
 
-		// Indentify what sources to include
-		included := lib.RequestedSources{
-			ETA:         false,
-			RTD:         false,
-			TransitTime: false,
-		}
 		if RequestCount%ETA_MULTIPLIER == 0 {
-			included.ETA = true
+			//included.ETA = true
+			includedSources["ETA"] = true
 			performRequest = true
 		}
 		if RequestCount%RTD_MULTIPLIER == 0 {
-			included.RTD = true
-			performRequest = true
+			//included.RTD = true
+			included["RTD"] = false
+			//performRequest = true
 		}
 		if RequestCount%TRANSITTIME_MULTIPLIER == 0 {
-			included.TransitTime = true
+			//included.TransitTime = true
+			included["TransitTime"] = true
 			performRequest = true
 		}
 
@@ -110,10 +108,10 @@ func SetJson() {
 			AnnouncementJsonToSend = JSONs.Announcements
 		}
 
-		TimeElapsed := time.Since(StartTime)
+		timeElapsed := time.Since(startTime)
 		// Sleep remaining time
-		log.Println("Request took: ", TimeElapsed)
-		time.Sleep((REQ_INTERVAL * time.Second) - TimeElapsed)
+		log.Println("Request took: ", timeElapsed)
+		time.Sleep((REQ_INTERVAL * time.Second) - timeElapsed)
 		RequestCount++
 	}
 }

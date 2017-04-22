@@ -31,8 +31,8 @@ const (
 var (
 	// Holds processed list of stops from RTD schedule
 	rtd_stops = []StopInfo{}
-	// Hold the previous requests for sources that were not updated
-	PreviousSources = []Source{}
+	// Hold the previous objects for sources that were not updated
+	PreviousObjects = map[string]FinalObjects{}
 )
 
 /* Holds information parsed from config.json (used for RTD routes) */
@@ -45,13 +45,6 @@ type Config struct {
 }
 type Configs struct {
 	Sources []Config `json:"Sources"`
-}
-
-/* List of sources requested by the server for updates */
-type RequestedSources struct {
-	ETA         bool
-	RTD         bool
-	TransitTime bool
 }
 
 /* Struct definitions for the json coming in from ETA */
@@ -108,15 +101,6 @@ type ETA_Announcements struct {
 			Text  string `json:"text"`
 		} `json:"announcements"`
 	} `json:"get_service_announcements"`
-}
-
-/* Collection of parsed structs from clients */
-type ParsedObjects struct {
-	ETA_Routes        ETA_Routes
-	ETA_Stops         ETA_Stops
-	ETA_Buses         ETA_Buses
-	ETA_Announcements ETA_Announcements
-	RTD               interface{}
 }
 
 /* Final structs each source is parsed in to */
@@ -186,6 +170,7 @@ type Source struct {
 	Requests []Request
 	Final    FinalObjects
 	Config   Config
+	Parse    func(requests []Request, conf Config) FinalObjects
 }
 
 /* Create sorter for StopInfo objects */
@@ -235,17 +220,17 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time.Time) FinalJSONs {
+func CreateFinalObjects(included map[string]bool, confs Configs, StartTime time.Time) FinalJSONs {
 	Sources := []Source{}
 	Conf := Config{}
 	SourceName := ""
 
-  log.Println(" Time elapsed1: ", time.Since(StartTime))
+	log.Println(" Time elapsed1: ", time.Since(StartTime))
 
 	// Initialize ETA
 	SourceName = "ETA"
 	var ETARequests []Request
-	if included.ETA {
+	if included[SourceName] {
 		ETARequests = []Request{
 			{Client: Client{Url: ROUTES_URL, Type: "json"},
 				GenericStructure: &ETA_Routes{}},
@@ -262,6 +247,7 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 		Requests: ETARequests,
 		Final:    FinalObjects{},
 		Config:   Config{},
+		Parse:    ParseETAObjects,
 	}
 	Sources = append(Sources, ETASource)
 
@@ -275,7 +261,7 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 	}
 
 	var RTDRequests []Request
-	if included.RTD {
+	if included[SourceName] {
 		RTDRequests = []Request{
 			{Client: Client{
 				Url:  RTD_ROUTES_URL,
@@ -294,6 +280,7 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 		Requests: RTDRequests,
 		Final:    FinalObjects{},
 		Config:   Conf,
+		Parse:    ParseRTDObjects,
 	}
 	Sources = append(Sources, RTDSource)
 
@@ -306,14 +293,14 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 		}
 	}
 
-  log.Println(" Time elapsed2: ", time.Since(StartTime))
+	log.Println(" Time elapsed2: ", time.Since(StartTime))
 
 	// Insert the authentication key
 	TransitRoutesAuthUrl := strings.Replace(TRANSITTIME_ROUTES_URL, "SECRET", Conf.Key, 1)
 	TransitBusesAuthUrl := strings.Replace(TRANSITTIME_BUSES_URL, "SECRET", Conf.Key, 1)
 
 	var TransitTimeRequests []Request
-	if included.TransitTime {
+	if included[SourceName] {
 		TransitTimeRequests = []Request{
 			{Client: Client{
 				Url:  TransitRoutesAuthUrl,
@@ -330,13 +317,15 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 		Requests: TransitTimeRequests,
 		Final:    FinalObjects{},
 		Config:   Conf,
+		Parse:    ParseTransitTimeObjects,
 	}
 	Sources = append(Sources, TransitTimeSource)
 
-  log.Println(" Time elapsed3: ", time.Since(StartTime))
+	log.Println(" Time elapsed3: ", time.Since(StartTime))
 
+	//TODO parallelize this
 	for i, _ := range Sources {
-    log.Println(" log: ", i)
+		log.Println(" log: ", i)
 		source := &Sources[i]
 		// Send HTTP requests
 		for j, _ := range source.Requests {
@@ -345,7 +334,7 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 			if err != nil {
 				log.Println(err)
 			}
-      log.Println(" Time elapsed: ", time.Since(StartTime))
+			log.Println(" Time elapsed: ", time.Since(StartTime))
 
 			// Unmarshall responses
 			if request.Type == "json" {
@@ -358,38 +347,19 @@ func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time
 			}
 		}
 
-		// Parse responses
-		var err error
-		if source.Name == "ETA" {
-			if !included.ETA && len(PreviousSources) >= 1 {
-				// Add old source data for non-requested updates
-				source.Final = PreviousSources[0].Final
-			} else if included.ETA {
-				// Parse data for requested updates
-				source.Final, _ = ParseETAObjects(source.Requests)
-			}
-		} else if source.Name == "RTD" {
-			if !included.RTD && len(PreviousSources) >= 2 {
-				source.Final = PreviousSources[1].Final
-			} else if included.RTD {
-
-				source.Final = ParseRTDObjects(source.Requests, source.Config)
-			}
-		} else if source.Name == "TransitTime" {
-			if !included.TransitTime && len(PreviousSources) >= 2 {
-				source.Final = PreviousSources[2].Final
-			} else if included.TransitTime {
-				source.Final = ParseTransitTimeObjects(source.Requests, source.Config)
-			}
+		// Add old source data for non-requested updates
+		if !included[source.Name] {
+			source.Final = PreviousObjects[source.Name]
+		} else {
+			// Parse data for requested updates
+			source.Final = source.Parse(source.Requests, source.Config)
+			PreviousObjects[source.Name] = source.Final
 		}
 
-		if err != nil {
-			log.Println(err)
-		}
 	}
 
-  log.Println(" Time elapsed4: ", time.Since(StartTime))
-	PreviousSources = Sources
+	log.Println(" Time elapsed4: ", time.Since(StartTime))
+	//PreviousSources = Sources
 	// Combine FinalObjects
 	return CreateFinalJSON(Sources)
 }
@@ -709,7 +679,7 @@ func ParseRTDObjects(requests []Request, conf Config) FinalObjects {
 
 //TODO actually refactor this method
 /* Parse ETA retrieves objects into an instance of FinalObject */
-func ParseETAObjects(requests []Request) (FinalObjects, error) {
+func ParseETAObjects(requests []Request, conf Config) FinalObjects {
 	var nextBusTimesStart []int
 
 	Final := FinalObjects{
@@ -722,8 +692,6 @@ func ParseETAObjects(requests []Request) (FinalObjects, error) {
 	ETAStops := requests[1].GenericStructure.(*ETA_Stops)
 	ETABuses := requests[2].GenericStructure.(*ETA_Buses)
 	ETAAnnouncements := requests[3].GenericStructure.(*ETA_Announcements)
-
-	var err error
 
 	for _, route := range ETARoutes.GetRoutes {
 		var stopToInt []int
@@ -821,7 +789,7 @@ func ParseETAObjects(requests []Request) (FinalObjects, error) {
 	}
 	Final.Announcements = append(Final.Announcements, newAnnouncement)
 
-	return Final, err
+	return Final
 }
 
 /* Creates the final json to be served by the server */
