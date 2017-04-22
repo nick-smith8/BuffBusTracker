@@ -235,10 +235,12 @@ func (c Client) httpCall() ([]byte, error) {
 }
 
 /* Create struct of parsed responses from servers */
-func CreateFinalObjects(included RequestedSources, confs Configs) FinalJSONs {
+func CreateFinalObjects(included RequestedSources, confs Configs, StartTime time.Time) FinalJSONs {
 	Sources := []Source{}
 	Conf := Config{}
 	SourceName := ""
+
+  log.Println(" Time elapsed1: ", time.Since(StartTime))
 
 	// Initialize ETA
 	SourceName = "ETA"
@@ -304,6 +306,8 @@ func CreateFinalObjects(included RequestedSources, confs Configs) FinalJSONs {
 		}
 	}
 
+  log.Println(" Time elapsed2: ", time.Since(StartTime))
+
 	// Insert the authentication key
 	TransitRoutesAuthUrl := strings.Replace(TRANSITTIME_ROUTES_URL, "SECRET", Conf.Key, 1)
 	TransitBusesAuthUrl := strings.Replace(TRANSITTIME_BUSES_URL, "SECRET", Conf.Key, 1)
@@ -329,7 +333,10 @@ func CreateFinalObjects(included RequestedSources, confs Configs) FinalJSONs {
 	}
 	Sources = append(Sources, TransitTimeSource)
 
+  log.Println(" Time elapsed3: ", time.Since(StartTime))
+
 	for i, _ := range Sources {
+    log.Println(" log: ", i)
 		source := &Sources[i]
 		// Send HTTP requests
 		for j, _ := range source.Requests {
@@ -338,6 +345,7 @@ func CreateFinalObjects(included RequestedSources, confs Configs) FinalJSONs {
 			if err != nil {
 				log.Println(err)
 			}
+      log.Println(" Time elapsed: ", time.Since(StartTime))
 
 			// Unmarshall responses
 			if request.Type == "json" {
@@ -380,6 +388,7 @@ func CreateFinalObjects(included RequestedSources, confs Configs) FinalJSONs {
 		}
 	}
 
+  log.Println(" Time elapsed4: ", time.Since(StartTime))
 	PreviousSources = Sources
 	// Combine FinalObjects
 	return CreateFinalJSON(Sources)

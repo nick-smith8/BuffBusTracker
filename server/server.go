@@ -13,13 +13,13 @@ import (
 const (
 	PORT = "8081"
 	// How often to send requests
-	REQ_INTERVAL = 10
+	REQ_INTERVAL = 5
 	CONFIG_FILE  = "config.json"
 	// Multiplier to REQ_INTERVAL for this source
 	// eg 3 means request from this source every 3*10 seconds
-	ETA_MULTIPLIER         = 1
-	RTD_MULTIPLIER         = 3
-	TRANSITTIME_MULTIPLIER = 1
+	ETA_MULTIPLIER         = 2
+	RTD_MULTIPLIER         = 6
+	TRANSITTIME_MULTIPLIER = 6
 )
 
 var (
@@ -79,32 +79,40 @@ func SetJson() {
 		log.Println("Request:", RequestCount)
 
 		StartTime := time.Now()
+		performRequest := false
 
 		// Indentify what sources to include
 		included := lib.RequestedSources{
-			ETA: false,
-			RTD: false,
+			ETA:         false,
+			RTD:         false,
+			TransitTime: false,
 		}
 		if RequestCount%ETA_MULTIPLIER == 0 {
-			//included.ETA = true
+			included.ETA = true
+			performRequest = true
 		}
 		if RequestCount%RTD_MULTIPLIER == 0 {
 			included.RTD = true
+			performRequest = true
 		}
 		if RequestCount%TRANSITTIME_MULTIPLIER == 0 {
 			included.TransitTime = true
+			performRequest = true
 		}
 
-		JSONs := lib.CreateFinalObjects(included, conf)
+		if performRequest {
+			JSONs := lib.CreateFinalObjects(included, conf, StartTime)
 
-		// Update JSONs being served
-		RouteJsonToSend = JSONs.Routes
-		StopJsonToSend = JSONs.Stops
-		BusJsonToSend = JSONs.Buses
-		AnnouncementJsonToSend = JSONs.Announcements
+			// Update JSONs being served
+			RouteJsonToSend = JSONs.Routes
+			StopJsonToSend = JSONs.Stops
+			BusJsonToSend = JSONs.Buses
+			AnnouncementJsonToSend = JSONs.Announcements
+		}
 
 		TimeElapsed := time.Since(StartTime)
 		// Sleep remaining time
+		log.Println("Request took: ", TimeElapsed)
 		time.Sleep((REQ_INTERVAL * time.Second) - TimeElapsed)
 		RequestCount++
 	}
