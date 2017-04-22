@@ -89,17 +89,17 @@ func SetJson() {
 		}
 		if RequestCount%RTD_MULTIPLIER == 0 {
 			//included.RTD = true
-			included["RTD"] = false
+			includedSources["RTD"] = false
 			//performRequest = true
 		}
 		if RequestCount%TRANSITTIME_MULTIPLIER == 0 {
 			//included.TransitTime = true
-			included["TransitTime"] = true
+			includedSources["TransitTime"] = true
 			performRequest = true
 		}
 
 		if performRequest {
-			JSONs := lib.CreateFinalObjects(included, conf, StartTime)
+			JSONs := lib.CreateFinalObjects(includedSources, conf, startTime)
 
 			// Update JSONs being served
 			RouteJsonToSend = JSONs.Routes
