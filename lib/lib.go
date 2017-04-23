@@ -320,7 +320,7 @@ func CreateFinalObjects(included map[string]bool, confs Configs, StartTime time.
 
 	log.Println(" Starting requests: ", time.Since(StartTime))
 
-	var wg sync.WaitGroup
+	var wgSources sync.WaitGroup
 
 	// Process sources in parallel
 	for i, _ := range Sources {
@@ -330,41 +330,56 @@ func CreateFinalObjects(included map[string]bool, confs Configs, StartTime time.
 			source.Final = PreviousObjects[source.Name]
 		} else {
 			// Parse data for requested update
-			wg.Add(1)
-			go processSource(source, StartTime, &wg)
+			wgSources.Add(1)
+			go processSource(source, StartTime, &wgSources)
+
 		}
 	}
-	wg.Wait()
+	wgSources.Wait()
 
 	log.Println(" Requsts finished: ", time.Since(StartTime))
 	// Combine FinalObjects
 	return CreateFinalJSON(Sources)
 }
 
-func processSource(source *Source, StartTime time.Time, wg *sync.WaitGroup) {
-	defer wg.Done()
+func processSource(source *Source, StartTime time.Time, wgSources *sync.WaitGroup) {
+	// /defer wgSources.Done()
+
+	var wgClients sync.WaitGroup
 	for j, _ := range source.Requests {
 		request := &source.Requests[j]
-		clientResp, err := request.Client.httpCall()
-		if err != nil {
-			log.Println(err)
-		}
-		log.Println(" Processing ", source.Name, time.Since(StartTime))
 
-		// Unmarshall responses
-		if request.Type == "json" {
-			err = json.Unmarshal(clientResp, request.GenericStructure)
-		} else if request.Type == "proto" {
-			err = proto.Unmarshal(clientResp, request.ProtoStructure)
-		}
-		if err != nil {
-			log.Println(err)
-		}
+		log.Println(" ProcessingBef ", request.Client.Url, time.Since(StartTime))
+
+		wgClients.Add(1)
+		// Perform HTTP requests in parallel
+		go func(request *Request) {
+			var err error
+			clientResp, err := request.Client.httpCall()
+
+			// Interpret responses
+			if request.Type == "json" {
+				err = json.Unmarshal(clientResp, request.GenericStructure)
+			} else if request.Type == "proto" {
+				err = proto.Unmarshal(clientResp, request.ProtoStructure)
+			}
+			if err != nil {
+				log.Println(err)
+			}
+			log.Println(" ProcessingAft ", request.Client.Url, time.Since(StartTime))
+
+			wgClients.Done()
+		}(request)
+
 	}
-	log.Println(" Processing req...: ", source.Name, time.Since(StartTime))
+
+	wgClients.Wait()
+
 	source.Final = source.Parse(source.Requests, source.Config)
-	log.Println(" Processing req... done: ", source.Name, time.Since(StartTime))
 	PreviousObjects[source.Name] = source.Final
+
+	wgSources.Done()
+
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject
