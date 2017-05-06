@@ -84,7 +84,7 @@ func SetJson() {
 
 		if RequestCount%ETA_MULTIPLIER == 0 {
 			//included.ETA = true
-			includedSources["ETA"] = true
+			includedSources["ETA"] = false
 			performRequest = true
 		}
 		if RequestCount%RTD_MULTIPLIER == 0 {

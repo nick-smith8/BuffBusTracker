@@ -400,22 +400,11 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 		times := entity.GetTripUpdate().GetStopTimeUpdate()
 		routeName := trip.GetRouteId()
 
+		routeName = mapRouteName(routeName, trip.GetTripId())
+
 		// Only take routes found in the config
 		if _, ok := conf.Buses[routeName]; ok {
 			routeId := conf.Buses[routeName]
-			if routeName == "STMP" {
-				routeName = "Stampede-TT"
-			} else if routeName == "FF1" {
-				routeName = "FF1-TT"
-			} else if routeName == "FF2" {
-				routeName = "FF2-TT"
-			} else if routeName == "SKIP" {
-				routeName = "SKIP-TT"
-			} else if routeName == "DASH" {
-				routeName = "DASH-TT"
-			} else if routeName == "HOP" {
-				routeName = "HOP-TT"
-			}
 
 			currentRoutePtr := &RouteInfo{}
 
@@ -508,28 +497,22 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 		bus := entity.GetVehicle()
 		routeName := bus.GetTrip().GetRouteId()
 
-		// Only take routes found in the config
-		if _, ok := conf.Buses[routeName]; ok {
-			routeId := conf.Buses[routeName]
-			if routeName == "STMP" {
-				routeName = "Stampede-TT"
-			} else if routeName == "FF1" {
-				routeName = "FF1-TT"
-			} else if routeName == "FF2" {
-				routeName = "FF2-TT"
-			} else if routeName == "SKIP" {
-				routeName = "SKIP-TT"
-			} else if routeName == "DASH" {
-				routeName = "DASH-TT"
-			} else if routeName == "HOP" {
-				routeName = "HOP-TT"
+		routeName = mapRouteName(routeName, bus.GetTrip().GetTripId())
+
+		log.Println("Bus name:", routeName, "trip: ", bus.GetTrip().GetTripId())
+
+		for i, _ := range Final.Routes {
+
+			if routeName == Final.Routes[i].Name {
+				routeId := Final.Routes[i].ID
+
+				newBus := BusInfo{
+					RouteID: routeId,
+					Lat:     float64(bus.GetPosition().GetLatitude()),
+					Lng:     float64(bus.GetPosition().GetLongitude()),
+				}
+				Final.Buses = append(Final.Buses, newBus)
 			}
-			newBus := BusInfo{
-				RouteID: routeId,
-				Lat:     float64(bus.GetPosition().GetLatitude()),
-				Lng:     float64(bus.GetPosition().GetLongitude()),
-			}
-			Final.Buses = append(Final.Buses, newBus)
 		}
 	}
 
@@ -537,6 +520,29 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 	sort.Sort(IDSorter(Final.Stops))
 
 	return Final
+}
+
+func mapRouteName(Route string, Direction string) string {
+	routeName := Route
+	if routeName == "STMP" {
+		routeName = "Stampede-TT"
+	} else if routeName == "FF1" {
+		routeName = "FF1-TT"
+	} else if routeName == "FF2" {
+		routeName = "FF2-TT"
+	} else if routeName == "SKIP" {
+		routeName = "SKIP-TT"
+	} else if routeName == "DASH" {
+		routeName = "DASH-TT"
+	}
+
+	if strings.Contains(Direction, "CCW") {
+		routeName += " Counter Clockwise"
+	} else if strings.Contains(Direction, "CW") {
+		routeName += " Clockwise"
+	}
+
+	return routeName
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject */
