@@ -22,7 +22,7 @@ RUN rm gtfs-realtime.proto
 RUN wget http://www.rtd-denver.com/GoogleFeeder/google_transit.zip
 RUN unzip -p google_transit.zip stops.txt > RTDstops.txt
 # Trim stop data to important fields and guarantee field data types (no strings as ints RTD...)
-RUN awk -i inplace -F "," '$1~/^[0-9]+$/ && $5~/^[0-9\.-]+$/ && $6~/^[0-9\.-]+$/ {printf "%s,%s,%s,%s\r\n",$1,$3,$5,$6}' RTDstops.txt
+RUN awk -i inplace -F "," '$11~/^[0-9]+$/ && $1~/^[0-9\.-]+$/ && $4~/^[0-9\.-]+$/ {printf "%s,%s,%s,%s,%s\r\n",$11,$9,$1,$4,$8}' RTDstops.txt
 RUN rm google_transit.zip
 
 ADD . /go/src/BuffBusTracker/

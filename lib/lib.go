@@ -31,7 +31,7 @@ const (
 
 var (
 	// Holds processed list of stops from RTD schedule
-	rtd_stops = []StopInfo{}
+	rtd_stops = []RTDStopData{}
 	// Hold the previous objects for sources that were not updated
 	PreviousObjects = map[string]FinalObjects{}
 )
@@ -102,6 +102,14 @@ type ETA_Announcements struct {
 			Text  string `json:"text"`
 		} `json:"announcements"`
 	} `json:"get_service_announcements"`
+}
+
+type RTDStopData struct {
+	ID   int     `csv:"0"`
+	Name string  `csv:"1"`
+	Lat  float64 `csv:"2"`
+	Lng  float64 `csv:"3"`
+	Desc string  `csv:"4"`
 }
 
 /* Final structs each source is parsed in to */
@@ -180,6 +188,12 @@ type IDSorter []StopInfo
 func (a IDSorter) Len() int           { return len(a) }
 func (a IDSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a IDSorter) Less(i, j int) bool { return a[i].ID < a[j].ID }
+
+type StopDataSorter []RTDStopData
+
+func (a StopDataSorter) Len() int           { return len(a) }
+func (a StopDataSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a StopDataSorter) Less(i, j int) bool { return a[i].ID < a[j].ID }
 
 func init() {
 	/* Parse stop schema from RTD schedule data */
@@ -400,6 +414,8 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 		times := entity.GetTripUpdate().GetStopTimeUpdate()
 		routeName := trip.GetRouteId()
 
+		log.Println("Route: ", routeName, " Trip: ", trip.GetTripId(), " Direct: ", trip.GetDirectionId())
+
 		routeName = mapRouteName(routeName, trip.GetTripId())
 
 		// Only take routes found in the config
@@ -448,11 +464,15 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 						}
 					}
 
+          stopName := mapStopName(rtd_stops[i].Name, rtd_stops[i].Desc)
+
+					log.Println(" Name: ", stopName, "Desc: ", rtd_stops[i].Desc)
+
 					// Stop not seen yet
 					if currentStopPtr.ID == 0 {
 						newStop := StopInfo{
 							ID:                rtd_stops[i].ID,
-							Name:              rtd_stops[i].Name,
+							Name:              stopName,
 							Lat:               rtd_stops[i].Lat,
 							Lng:               rtd_stops[i].Lng,
 							NextBusTimesFinal: map[string][]int{},
@@ -499,8 +519,6 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 
 		routeName = mapRouteName(routeName, bus.GetTrip().GetTripId())
 
-		log.Println("Bus name:", routeName, "trip: ", bus.GetTrip().GetTripId())
-
 		for i, _ := range Final.Routes {
 
 			if routeName == Final.Routes[i].Name {
@@ -522,6 +540,7 @@ func ParseTransitTimeObjects(requests []Request, conf Config) FinalObjects {
 	return Final
 }
 
+/*  */
 func mapRouteName(Route string, Direction string) string {
 	routeName := Route
 	if routeName == "STMP" {
@@ -536,13 +555,38 @@ func mapRouteName(Route string, Direction string) string {
 		routeName = "DASH-TT"
 	}
 
-	if strings.Contains(Direction, "CCW") {
+	if strings.Contains(strings.ToLower(Direction), "cccw") {
 		routeName += " Counter Clockwise"
-	} else if strings.Contains(Direction, "CW") {
+	} else if strings.Contains(strings.ToLower(Direction), "cw") {
 		routeName += " Clockwise"
 	}
 
 	return routeName
+}
+
+/*  */
+func mapStopName(Stop string, Description string) string {
+	stopName := Stop
+
+  if strings.Contains(strings.ToLower(Description), "vehicles travelling north") {
+    stopName += "-N"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling south") {
+    stopName += "-S"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling east") {
+    stopName += "-E"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling west") {
+    stopName += "-W"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling noertheast") {
+    stopName += "-NE"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling northwest") {
+    stopName += "-NW"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling southeast") {
+    stopName += "-SE"
+  } else if strings.Contains(strings.ToLower(Description), "vehicles travelling southwest") {
+    stopName += "-SW"
+  }
+
+	return stopName
 }
 
 /* Parse RTD retrieved objects into an instance of FinalObject */
@@ -859,8 +903,8 @@ func CreateFinalJSON(Sources []Source) FinalJSONs {
 }
 
 /* Helper functions */
-func LoadStopData() []StopInfo {
-	data := []StopInfo{}
+func LoadStopData() []RTDStopData {
+	data := []RTDStopData{}
 	csvParser := parser.CsvParser{
 		CsvFile:         RTD_STOPS_FILE,
 		CsvSeparator:    ',',
@@ -869,18 +913,18 @@ func LoadStopData() []StopInfo {
 	}
 
 	// Parse to general items array using specified struct
-	parsedItems, err := csvParser.Parse(StopInfo{})
+	parsedItems, err := csvParser.Parse(RTDStopData{})
 	if err != nil {
 		log.Fatal("Error parsing file: ", err)
 	}
 
 	// Copy items to StopInfo array
 	for _, item := range parsedItems {
-		data = append(data, *item.(*StopInfo))
+		data = append(data, *item.(*RTDStopData))
 	}
 
 	// Sort StopInfo based on IDs
-	sort.Sort(IDSorter(data))
+	sort.Sort(StopDataSorter(data))
 
 	return data
 }
