@@ -15,3 +15,8 @@ Server that pulls from eta api, formats the data to the JSON needed by our IOS/A
   * Clean-up code
   * Add persistent logging for public site(docker volumes)
   * Add a way to notify by email when the server fails (bash script + docker logging?)
+  * Rewrite stop names based on the direction the bus is going
+
+  Future:
+  * Send polylines from the server and code the app to read them in on app load?
+  * Intelligent way of aligning parse times to minimize data stailness (exponential backoff)?

@@ -5,156 +5,179 @@
 # description: Backend API for the BuffBus app
 
 if [ -f /etc/init.d/functions ]; then
-    . /etc/init.d/functions
+  . /etc/init.d/functions
 fi
 
-IMAGE_NAME='buffbus-image'
-CONTAINER_NAME='buffbus-server'
+IMAGE_NAME="buffbus-image-test"
+CONTAINER_NAME="buffbus-server-test"
+
+# Email settings
+#EMAIL_ADDRESS='cherishdevapps@gmail.com'
+EMAIL_ADDRESS="falconertc@gmail.com"
+EMAIL_STATUS_SUBJECT="Container: $CONTAINER_NAME no longer reporting"
+EMAIL_STATUS_BODY="It broke"
 
 if [[ $EUID -ne 0 ]]; then
-    echo "Docker requires root access to run" 1>&2
-    exit 1
+  echo "Docker requires root access to run" 1>&2
+  exit 1
 fi
 
 usage() {
-    echo "Usage: $0 {build|start|restart|stop|shell|show|total|analyze|daily|hourly|memcheck}"
-    return 0
+  echo "Usage: $0 {status|build|start|restart|stop|shell|show|total|analyze|daily|hourly|memcheck}"
+  return 0
+}
+
+#
+status() {
+  #TODO check status
+  echo -e "Checking status of $CONTAINER_NAME...\n"
+  echo "$EMAIL_STATUS_BODY" | mail -s "$EMAIL_STATUS_SUBJECT" "$EMAIL_ADDRESS"
 }
 
 # Build docker image
 build() {
-    echo -e "Building $IMAGE_NAME...\n"
-    sudo docker build -t $IMAGE_NAME .
-    return $?
+  echo -e "Building $IMAGE_NAME...\n"
+  sudo docker build -t $IMAGE_NAME $@ .
+  return $?
 }
 
-# Show connections per IP address 
+# Show connections per IP address
 show() {
-    echo -e "Showing all Ips..."
-    docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | sort -n
-    return $?
+  echo -e "Showing all Ips..."
+  docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | sort -n
+  return $?
 }
 
-# Show total requests logged 
+# Show total requests logged
 total() {
-    echo -e "Showing amount of all requests..."
-    docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | awk '{ sum += $1 } END { print sum }'
-    return $?
+  echo -e "Showing amount of all requests..."
+  docker logs $CONTAINER_NAME | awk '{print $3}' | cut -d: -f1 | sort -n | uniq -c | awk '{ sum += $1 } END { print sum }'
+  return $?
 }
 
 # Show requests per hour
 analyze() {
-	WC=$(docker logs $CONTAINER_NAME | wc -l)
-	docker logs $CONTAINER_NAME | cut -d" " -f2 | cut -d: -f1 | sort | uniq -c | awk -v WC="$WC" '{PERCENT = ($1/WC)*100; printf" Hour: %d Total requests: %d Percent: %.2f%\n",$2,$1,PERCENT }'
-	echo "Total requests: $WC"
+  WC=$(docker logs $CONTAINER_NAME | wc -l)
+  docker logs $CONTAINER_NAME | cut -d" " -f2 | cut -d: -f1 | sort | uniq -c | awk -v WC="$WC" '{PERCENT = ($1/WC)*100; printf" Hour: %d Total requests: %d Percent: %.2f%\n",$2,$1,PERCENT }'
+  echo "Total requests: $WC"
 }
 
 # Show requests per day
 daily() {
-	echo -e "Date\tRequests"
-	docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c | awk '{print $2"\011"$1}'
+  echo -e "Date\tRequests"
+  docker logs $CONTAINER_NAME | cut -d" " -f1 | uniq -c | awk '{print $2"\011"$1}'
 }
 
 hourly() {
-	echo -e "Date\tRequests"
-	#docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk '{print $2,$3":00\011" $1}'
-	docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk 'BEGIN {total=-1} { if(day != $2 && length($2) != 0) { if(total != -1){print "t" day"\t"total;} total=0; day=$2}; total = total + $1; print "h"$3"\011"$1,RN;} END { print "t" $2"\t"total; }'
+  echo -e "Date\tRequests"
+  #docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk '{print $2,$3":00\011" $1}'
+  docker logs $CONTAINER_NAME | cut -d ":" -f1 | uniq -c | awk 'BEGIN {total=-1} { if(day != $2 && length($2) != 0) { if(total != -1){print "t" day"\t"total;} total=0; day=$2}; total = total + $1; print "h"$3"\011"$1,RN;} END { print "t" $2"\t"total; }'
 
 }
 
 # ???
 memcheck(){
-	dockerUsage=$(ls -la /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
-	
-	DU=$(ls -lah /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
-	
-	#125 mb
-	threshold=131072000
-	echo -e "Mem currently at: $DU"	
-	if [ $dockerUsage -gt $threshold ] ; then
-		echo -e "OHHHH NOOOO. lets make a job to remove the logs "
-	fi
+  dockerUsage=$(ls -la /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
+
+  DU=$(ls -lah /var/lib/docker/containers/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317/225dfd1b302ca50d7fee9de5625a81e21ee5bcdfee8a514491c72299580c5317-json.log | awk '{print $5}' )
+
+  #125 mb
+  threshold=131072000
+  echo -e "Mem currently at: $DU"
+  if [ $dockerUsage -gt $threshold ] ; then
+    echo -e "OHHHH NOOOO. lets make a job to remove the logs "
+  fi
 }
 
 # Cleanly start container
 start() {
-    echo -e "Starting $CONTAINER_NAME...\n"
-    if ! `docker images | grep -q $IMAGE_NAME`; then
-        build
-    fi
-    if `docker ps | grep -q $CONTAINER_NAME`; then
-        stop
-    fi
-    docker run \
-   	 --name $CONTAINER_NAME -h $CONTAINER_NAME \
-        -v `pwd`:/go/src/BuffBusTracker/ \
-	--restart=always \
-        -p 8080:8080 \
-        -d -t $IMAGE_NAME
-    return $?
+  echo -e "Starting $CONTAINER_NAME...\n"
+
+  # Stop existing container if running
+  docker ps | grep -q $CONTAINER_NAME
+  if [ $? -eq 0 ]; then
+    stop
+  fi
+
+  # Build image if necessary
+  docker images | grep -q $IMAGE_NAME
+  if [ $? -eq 1 ]; then
+    build
+  fi
+
+  docker run \
+  --name $CONTAINER_NAME -h $CONTAINER_NAME \
+  --restart=always \
+  -p 8081:8081 \
+  -d -t $IMAGE_NAME
+  return $?
 }
 
 # Restart running container
 restart() {
-    echo -e "Restart $CONTAINER_NAME...\n"
-    docker restart $CONTAINER_NAME
-    return $?
+  echo -e "Restart $CONTAINER_NAME...\n"
+  stop
+  start
+  return $?
 }
 
 # Stop running container
 stop() {
-    echo -e "Stopping $CONTAINER_NAME...\n"
-    docker rm -f $CONTAINER_NAME &>/dev/null
-    if [ $? -eq 0 ]; then
-        echo "$CONTAINER_NAME was killed"
-    else
-        echo "$CONTAINER_NAME was not found"
-    fi
-    return $?
+  echo -e "Stopping $CONTAINER_NAME...\n"
+  docker rm -f $CONTAINER_NAME &>/dev/null
+  if [ $? -eq 0 ]; then
+    echo "$CONTAINER_NAME was killed"
+  else
+    echo "$CONTAINER_NAME was not found"
+  fi
+  return $?
 }
 
 # Open a shell inside the container
 shell() {
-    docker exec -it $CONTAINER_NAME /bin/bash
-    return $?
+  docker exec -it $CONTAINER_NAME /bin/bash
+  return $?
 }
 
 case $1 in
-    build)
-        build
-        ;;
-    start)
-        start
-        ;;
-    restart)
-        restart
-        ;;
-    stop)
-       stop
-        ;;
-    show)
-       show
-        ;;
-    total)
-       total
-        ;;
-    daily)
-       daily
-        ;;
-    analyze)
-	analyze
-	;;
-    memcheck)
-	memcheck
-	;;
-    hourly)
-	hourly
-	;;
-    shell)
-        shell
-        ;;
-    *)
-        usage
-        ;;
+  status)
+    status
+  ;;
+  build)
+    build "${@:2}"
+  ;;
+  start)
+    start
+  ;;
+  restart)
+    restart
+  ;;
+  stop)
+    stop
+  ;;
+  show)
+    show
+  ;;
+  total)
+    total
+  ;;
+  daily)
+    daily
+  ;;
+  analyze)
+    analyze
+  ;;
+  memcheck)
+    memcheck
+  ;;
+  hourly)
+    hourly
+  ;;
+  shell)
+    shell
+  ;;
+  *)
+    usage
+  ;;
 esac
 exit $?

@@ -2,26 +2,33 @@ package main
 
 import (
 	"BuffBusTracker/lib"
+	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
 
 const (
-	ROUTES_URL   = "http://buffbus.etaspot.net/service.php?service=get_routes"
-	STOPS_URL    = "http://buffbus.etaspot.net/service.php?service=get_stops"
-	BUSES_URL    = "http://buffbus.etaspot.net/service.php?service=get_vehicles&includeETAData=1&orderedETAArray=1"
-	PORT         = "8080"
-	REQ_INTERVAL = 10
+	PORT = "8081"
+	// How often to send requests
+	REQ_INTERVAL = 5
+	CONFIG_FILE  = "config.json"
+	// Multiplier to REQ_INTERVAL for this source
+	// eg 3 means request from this source every 3*10 seconds
+	ETA_MULTIPLIER         = 2
+	RTD_MULTIPLIER         = 6
+	TRANSITTIME_MULTIPLIER = 6
 )
 
 var (
 	JsonToSend             []byte
-	BusJsonToSend          []byte
-	StopJsonToSend         []byte
 	RouteJsonToSend        []byte
+	StopJsonToSend         []byte
+	BusJsonToSend          []byte
 	AnnouncementJsonToSend []byte
+	RequestCount           uint64
 )
 
 func analyticsRequest(s string, i string) {
@@ -34,10 +41,10 @@ func analyticsRequest(s string, i string) {
 }
 
 /* Define the different functions to handle the routes */
-func bushandler(w http.ResponseWriter, r *http.Request) {
+func routehandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(BusJsonToSend)
+	w.Write(RouteJsonToSend)
 }
 
 func stophandler(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +55,10 @@ func stophandler(w http.ResponseWriter, r *http.Request) {
 	//go analyticsRequest("stops",r.RemoteAddr)
 }
 
-func routehandler(w http.ResponseWriter, r *http.Request) {
+func bushandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(RouteJsonToSend)
+	w.Write(BusJsonToSend)
 }
 
 func announcementhandler(w http.ResponseWriter, r *http.Request) {
@@ -67,21 +74,63 @@ func publichandler(w http.ResponseWriter, r *http.Request) {
 // Sets the global variables to the json that will be sent
 // Waits on the channel for a certain amount of time to then make the get to ETA's api
 func SetJson() {
+	var conf = ReadConfigs()
 	for {
-		log.Println("Running")
-		//t := time.Now()
-		FinalCreator := lib.CreateFinalCreator()
-		//t1 := time.Now()
-		BusJson, StopJson, RouteJson, AnnouncementJson, err := FinalCreator.CreateFinalJson()
-		if err != nil {
-			// panic(err)
+		log.Println("Request:", RequestCount)
+
+		startTime := time.Now()
+		performRequest := false
+		includedSources := map[string]bool{}
+
+		if RequestCount%ETA_MULTIPLIER == 0 {
+			//included.ETA = true
+			includedSources["ETA"] = false
+			performRequest = true
 		}
-		BusJsonToSend = BusJson
-		StopJsonToSend = StopJson
-		RouteJsonToSend = RouteJson
-		AnnouncementJsonToSend = AnnouncementJson
-		<-time.After(REQ_INTERVAL * time.Second)
+		if RequestCount%RTD_MULTIPLIER == 0 {
+			//included.RTD = true
+			includedSources["RTD"] = false
+			//performRequest = true
+		}
+		if RequestCount%TRANSITTIME_MULTIPLIER == 0 {
+			//included.TransitTime = true
+			includedSources["TransitTime"] = true
+			performRequest = true
+		}
+
+		if performRequest {
+			JSONs := lib.CreateFinalObjects(includedSources, conf, startTime)
+
+			// Update JSONs being served
+			RouteJsonToSend = JSONs.Routes
+			StopJsonToSend = JSONs.Stops
+			BusJsonToSend = JSONs.Buses
+			AnnouncementJsonToSend = JSONs.Announcements
+		}
+
+		timeElapsed := time.Since(startTime)
+		// Sleep remaining time
+		log.Println("Request took: ", timeElapsed)
+		time.Sleep((REQ_INTERVAL * time.Second) - timeElapsed)
+		RequestCount++
 	}
+}
+
+/* Reads info from config file */
+func ReadConfigs() lib.Configs {
+	file, err := os.Open(CONFIG_FILE)
+	if err != nil {
+		log.Fatal("Config file is missing: ", CONFIG_FILE)
+	}
+	decoder := json.NewDecoder(file)
+	configs := lib.Configs{}
+	err = decoder.Decode(&configs)
+	if err != nil {
+		log.Fatal("Unable to parse config: ", CONFIG_FILE)
+	}
+	// Just in case
+	//sort.Strings(config.Buses)
+	return configs
 }
 
 /* Setup HTTP handlers oncreate */
@@ -91,6 +140,7 @@ func init() {
 	http.HandleFunc("/routes", routehandler)
 	http.HandleFunc("/announcements", announcementhandler)
 	http.HandleFunc("/public/", publichandler)
+
 }
 
 func main() {

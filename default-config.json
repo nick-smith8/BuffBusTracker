@@ -1,0 +1,28 @@
+{
+  "Sources": [{
+      "Name": "RTD",
+      "Username": "SECRET",
+      "Password": "SECRET",
+      "Buses": {
+        "STMP": 30,
+        "FF1":  31,
+        "FF2":  32,
+        "SKIP": 33,
+        "DASH": 34,
+        "HOP":  35
+      }
+    },
+    {
+      "Name": "TransitTime",
+      "Key": "SECRET",
+      "Buses": {
+        "STMP": 40,
+        "FF1":  41,
+        "FF2":  42,
+        "SKIP": 43,
+        "DASH": 44,
+        "HOP":  45
+      }
+    }
+  ]
+}
